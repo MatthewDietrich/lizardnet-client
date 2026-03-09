@@ -1,6 +1,9 @@
 import { useState, useRef } from 'react'
 import IRC from 'irc-framework'
 import type { Message } from '../types'
+import notificationSrc from '../assets/notification.wav'
+
+const notificationAudio = new Audio(notificationSrc)
 
 const HOST = 'irc.lizard.fun'
 const PORT = 7003
@@ -9,6 +12,7 @@ export type ConnStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnec
 
 export function useIrcClient() {
   const [nick, setNick] = useState('')
+  const nickRef = useRef('')
   const [connected, setConnected] = useState(false)
   const [connStatus, setConnStatus] = useState<ConnStatus>('disconnected')
   const [isOper, setIsOper] = useState(false)
@@ -27,7 +31,17 @@ export function useIrcClient() {
   const reconnectDelayRef = useRef(2000)
 
   function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat') {
-    setMessages(prev => [...prev, { from, text, ts: new Date(), kind }])
+    setMessages(prev => {
+      const isMention = (kind === 'chat' || kind === 'action') &&
+        !!nickRef.current &&
+        from !== nickRef.current &&
+        new RegExp(`\\b${nickRef.current}\\b`, 'i').test(text)
+      if (kind === 'pm' || isMention) {
+        notificationAudio.currentTime = 0
+        notificationAudio.play().catch(() => {})
+      }
+      return [...prev, { from, text, ts: new Date(), kind }]
+    })
   }
 
   function attachListeners(client: InstanceType<typeof IRC.Client>, chosenNick: string) {
@@ -159,7 +173,7 @@ export function useIrcClient() {
 
     client.on('nick', (event: unknown) => {
       const e = event as { nick: string; new_nick: string }
-      if (e.nick === chosenNick) setNick(e.new_nick)
+      if (e.nick === chosenNick) { setNick(e.new_nick); nickRef.current = e.new_nick }
       setUsers(prev => prev.map(u => u === e.nick ? e.new_nick : u).sort((a, b) => a.localeCompare(b)))
       setOps(prev => prev.map(u => u === e.nick ? e.new_nick : u))
       addMessage('*', `${e.nick} is now known as ${e.new_nick}`, 'event')
@@ -249,6 +263,7 @@ export function useIrcClient() {
     manualDisconnectRef.current = false
     const normalizedNick = chosenNick.replace(' ', '_')
     setNick(normalizedNick)
+    nickRef.current = normalizedNick
     credentialsRef.current = { nick: normalizedNick, password }
     reconnectDelayRef.current = 2000
     setConnStatus('connecting')
@@ -257,6 +272,7 @@ export function useIrcClient() {
 
   function register(chosenNick: string, password: string, email: string) {
     setNick(chosenNick)
+    nickRef.current = chosenNick
     credentialsRef.current = { nick: chosenNick, password }
     manualDisconnectRef.current = false
     reconnectDelayRef.current = 2000
