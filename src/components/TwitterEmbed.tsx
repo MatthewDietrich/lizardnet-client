@@ -20,8 +20,13 @@ export function getTwitterInfo(url: string): { username: string; statusId: strin
 
 export function TwitterEmbed({ username, statusId }: { username: string; statusId: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const embeddedIdRef = useRef<string | null>(null)
 
   useEffect(() => {
+    // Skip if we already embedded this tweet — guards against StrictMode double-invoke
+    if (embeddedIdRef.current === statusId) return
+    embeddedIdRef.current = statusId
+
     function embed() {
       if (!containerRef.current || !window.twttr) return
       containerRef.current.innerHTML = ''
@@ -35,7 +40,7 @@ export function TwitterEmbed({ username, statusId }: { username: string; statusI
       script.id = 'twitter-widgets-js'
       script.src = 'https://platform.twitter.com/widgets.js'
       script.async = true
-      script.onload = embed
+      script.addEventListener('load', embed)
       document.head.appendChild(script)
     } else {
       // Script tag exists but not loaded yet — wait for it
