@@ -88,7 +88,7 @@ export default function App() {
       {connected && <TopicBar topic={topic} isOper={isOper} onChangeTopic={changeTopic} />}
 
       <div className="d-flex gap-3 mb-3 flex-grow-1" style={{ minHeight: 0 }}>
-        <MessageList messages={messages} />
+        <MessageList messages={messages} nick={nick} />
         <UserList
           users={users}
           ops={ops}

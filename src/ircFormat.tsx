@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { TwitterEmbed, getTwitterInfo } from './components/TwitterEmbed'
 import { BlueskyEmbed, getBlueskyUrl } from './components/BlueskyEmbed'
+import { InlineImage } from './components/InlineImage'
 
 function isImageUrl(url: string): boolean {
   try {
@@ -99,11 +100,7 @@ export function parseIrc(text: string): ReactNode[] {
         nodes.push(<BlueskyEmbed key={key++} url={bskyUrl} />)
       }
       if (isImageUrl(parts[j])) {
-        nodes.push(
-          <div key={key++} style={{ marginTop: '0.5em' }}>
-            <img src={parts[j]} alt="" style={{ maxWidth: 400, maxHeight: 300, display: 'block', borderRadius: 8 }} />
-          </div>
-        )
+        nodes.push(<InlineImage key={key++} src={parts[j]} />)
       }
     }
     buffer = ''
