@@ -3,15 +3,22 @@ import EmojiPicker, { type EmojiClickData, Theme } from 'emoji-picker-react'
 
 interface Props {
   connected: boolean
+  users: string[]
   onSend: (text: string) => void
 }
 
-export default function ChatInput({ connected, onSend }: Props) {
+export default function ChatInput({ connected, users, onSend }: Props) {
   const [input, setInput] = useState('')
   const [showPicker, setShowPicker] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const tabStateRef = useRef<{
+    matches: string[]
+    idx: number
+    beforePrefix: string  // input text before the partial word
+    afterCursor: string   // input text after the cursor at first Tab
+  } | null>(null)
 
   useEffect(() => {
     if (!showPicker) return
@@ -35,6 +42,45 @@ export default function ChatInput({ connected, onSend }: Props) {
     setInput('')
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== 'Tab') { tabStateRef.current = null; return }
+    e.preventDefault()
+
+    let state = tabStateRef.current
+
+    if (!state) {
+      // First Tab — find the partial word before the cursor
+      const cursor = inputRef.current?.selectionStart ?? input.length
+      const before = input.slice(0, cursor)
+      const wordMatch = before.match(/(\S+)$/)
+      const partial = wordMatch?.[1] ?? ''
+      if (!partial) return
+
+      const matches = users.filter(u => u.toLowerCase().startsWith(partial.toLowerCase()))
+      if (!matches.length) return
+
+      state = {
+        matches,
+        idx: 0,
+        beforePrefix: before.slice(0, before.length - partial.length),
+        afterCursor: input.slice(cursor),
+      }
+    } else {
+      // Subsequent Tabs — cycle to next match
+      state = { ...state, idx: (state.idx + 1) % state.matches.length }
+    }
+
+    tabStateRef.current = state
+
+    const completed = state.matches[state.idx]
+    const suffix = state.beforePrefix.length === 0 ? ': ' : ' '
+    const newBefore = state.beforePrefix + completed + suffix
+    setInput(newBefore + state.afterCursor)
+    requestAnimationFrame(() => {
+      inputRef.current?.setSelectionRange(newBefore.length, newBefore.length)
+    })
+  }
+
   function onEmojiClick(data: EmojiClickData) {
     setInput(prev => prev + data.emoji)
     setShowPicker(false)
@@ -54,7 +100,8 @@ export default function ChatInput({ connected, onSend }: Props) {
           className="form-control"
           placeholder="Type a message..."
           value={input}
-          onChange={e => setInput(e.target.value)}
+          onChange={e => { setInput(e.target.value); tabStateRef.current = null }}
+          onKeyDown={handleKeyDown}
           disabled={!connected}
         />
         <button

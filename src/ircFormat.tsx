@@ -3,6 +3,7 @@ import { get as getEmoji } from 'node-emoji'
 import { TwitterEmbed, getTwitterInfo } from './components/TwitterEmbed'
 import { BlueskyEmbed, getBlueskyUrl } from './components/BlueskyEmbed'
 import { InlineImage } from './components/InlineImage'
+import { CollapseEmbed } from './components/CollapseEmbed'
 
 function replaceEmojis(text: string): string {
   return text.replace(/:([a-z0-9_+-]+):/g, (match, name) => getEmoji(name) ?? match)
@@ -86,7 +87,7 @@ export function parseIrc(text: string): ReactNode[] {
       const videoId = getYouTubeId(parts[j])
       if (videoId) {
         nodes.push(
-          <div key={key++} style={{ marginTop: '0.5em' }}>
+          <CollapseEmbed key={key++} label="YouTube">
             <iframe
               width="400" height="225"
               src={`https://www.youtube-nocookie.com/embed/${videoId}`}
@@ -94,19 +95,31 @@ export function parseIrc(text: string): ReactNode[] {
               allowFullScreen
               style={{ border: 'none', display: 'block' }}
             />
-          </div>
+          </CollapseEmbed>
         )
       }
       const twitterInfo = getTwitterInfo(parts[j])
       if (twitterInfo) {
-        nodes.push(<TwitterEmbed key={key++} {...twitterInfo} />)
+        nodes.push(
+          <CollapseEmbed key={key++} label="Twitter">
+            <TwitterEmbed {...twitterInfo} />
+          </CollapseEmbed>
+        )
       }
       const bskyUrl = getBlueskyUrl(parts[j])
       if (bskyUrl) {
-        nodes.push(<BlueskyEmbed key={key++} url={bskyUrl} />)
+        nodes.push(
+          <CollapseEmbed key={key++} label="Bluesky">
+            <BlueskyEmbed url={bskyUrl} />
+          </CollapseEmbed>
+        )
       }
       if (isImageUrl(parts[j])) {
-        nodes.push(<InlineImage key={key++} src={parts[j]} />)
+        nodes.push(
+          <CollapseEmbed key={key++} label="Image">
+            <InlineImage src={parts[j]} />
+          </CollapseEmbed>
+        )
       }
     }
     buffer = ''

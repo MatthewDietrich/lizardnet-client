@@ -102,7 +102,7 @@ export default function App() {
         />
       </div>
 
-      <ChatInput connected={connected} onSend={handleSend} />
+      <ChatInput connected={connected} users={users} onSend={handleSend} />
 
       {menuUser && (
         <UserMenu
