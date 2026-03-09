@@ -19,13 +19,18 @@ export function useIrcClient() {
   const rawOutputRef = useRef(false)
   const rawOutputTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' = 'chat') {
+  function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat') {
     setMessages(prev => [...prev, { from, text, ts: new Date(), kind }])
   }
 
   function attachListeners(client: InstanceType<typeof IRC.Client>, chosenNick: string) {
     client.on('message', ({ nick: who, target, message }) => {
       if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
+      const actionMatch = message.match(/^\x01ACTION (.*)\x01$/)
+      if (actionMatch) {
+        addMessage(who, actionMatch[1], 'action')
+        return
+      }
       if (target?.toLowerCase() === '#chat') {
         addMessage(who, message)
       } else {
@@ -133,7 +138,7 @@ export function useIrcClient() {
     client.on('quit', (event: unknown) => {
       const e = event as { nick: string; message?: string }
       setUsers(prev => prev.filter(u => u !== e.nick))
-      addMessage('*', `${e.nick} has quit${e.message ? ` (${e.message})` : ''}`, 'event')
+      addMessage('*', `${e.nick} has quit`, 'event')
     })
 
     client.on('userlist', (event: unknown) => {
@@ -145,7 +150,26 @@ export function useIrcClient() {
       if (self?.modes.includes('o')) setIsOper(true)
     })
 
-    client.on('notice', () => { /* suppress */ })
+    client.on('nick', (event: unknown) => {
+      const e = event as { nick: string; new_nick: string }
+      if (e.nick === chosenNick) setNick(e.new_nick)
+      setUsers(prev => prev.map(u => u === e.nick ? e.new_nick : u).sort((a, b) => a.localeCompare(b)))
+      setOps(prev => prev.map(u => u === e.nick ? e.new_nick : u))
+      addMessage('*', `${e.nick} is now known as ${e.new_nick}`, 'event')
+    })
+
+    client.on('notice', (event: unknown) => {
+      const e = event as { nick?: string; message?: string; notice?: string }
+      let text = e.message ?? e.notice ?? ''
+      if (!text) return
+      if (e.nick?.toLowerCase() === 'nickserv') {
+        // Drop "Last login from: <user>@<host> on <date>." lines
+        if (/^Last login from:/i.test(text)) return
+        // Replace "/msg NickServ IDENTIFY [nick] <password>" with "/identify <password>"
+        text = text.replace(/\/msg NickServ IDENTIFY(?:\s+\S+)?\s+(\S+)/gi, '/identify $1')
+        addMessage('NickServ', text, 'event')
+      }
+    })
 
     client.on('close', () => {
       if (clientRef.current !== client) return
@@ -265,5 +289,20 @@ export function useIrcClient() {
     clientRef.current?.raw(`TOPIC #chat :${newTopic}`)
   }
 
-  return { nick, connected, isOper, messages, users, ops, bannedUsers, topic, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic }
+  function changeNick(newNick: string) {
+    if (!clientRef.current) return
+    clientRef.current.raw(`NICK ${newNick.replace(' ', '_')}`)
+  }
+
+  function sayNickServ(text: string) {
+    clientRef.current?.say('NickServ', text)
+  }
+
+  function sendAction(text: string) {
+    if (!text.trim() || !clientRef.current) return
+    clientRef.current.say('#chat', `\x01ACTION ${text}\x01`)
+    addMessage(nick, text, 'action')
+  }
+
+  return { nick, connected, isOper, messages, users, ops, bannedUsers, topic, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction }
 }

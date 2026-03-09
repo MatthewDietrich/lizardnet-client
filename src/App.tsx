@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import lizardIcon from './assets/lizard_icon.png'
 import { useIrcClient } from './hooks/useIrcClient'
 import ConnectModal from './components/ConnectModal'
 import AdminConsole from './components/AdminConsole'
@@ -7,16 +8,36 @@ import TopicBar from './components/TopicBar'
 import MessageList from './components/MessageList'
 import UserList from './components/UserList'
 import ChatInput from './components/ChatInput'
+import ChangeNickPopup from './components/ChangeNickPopup'
 
 export default function App() {
-  const { nick, connected, isOper, messages, users, ops, bannedUsers, topic, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic } = useIrcClient()
+  const { nick, connected, isOper, messages, users, ops, bannedUsers, topic, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction } = useIrcClient()
 
   const [menuUser, setMenuUser] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
   const [showConnectModal, setShowConnectModal] = useState(true)
   const [showAdminConsole, setShowAdminConsole] = useState(false)
+  const [showNickPopup, setShowNickPopup] = useState(false)
+
+  const HELP_LINES = [
+    '/me <action>                 — send an action message',
+    '/nick <nick>                 — change your nickname',
+    '/msg <nick> <message>        — send a private message',
+    '/identify <password>         — identify a registered nickname (log in)',
+    '/register <password> <email> — register nickname',
+    '/ghost <nick> <password>     — disconnect a ghost using your nickname',
+    '/help                        — show this help',
+  ]
 
   function handleSend(text: string) {
+    if (text.startsWith('/me ')) {
+      const action = text.slice(4).trim()
+      if (action) { sendAction(action); return }
+    }
+    if (text.startsWith('/nick ')) {
+      const newNick = text.slice(6).trim()
+      if (newNick) { changeNick(newNick); return }
+    }
     if (text.startsWith('/msg ')) {
       const rest = text.slice(5)
       const spaceIdx = rest.indexOf(' ')
@@ -25,16 +46,41 @@ export default function App() {
         return
       }
     }
+    if (text.startsWith('/identify ')) {
+      sayNickServ(`IDENTIFY ${text.slice(10).trim()}`)
+      return
+    }
+    if (text.startsWith('/register ')) {
+      const parts = text.slice(10).trim().split(' ')
+      if (parts.length >= 2) {
+        sayNickServ(`REGISTER ${parts[0]} ${parts[1]}`)
+        return
+      }
+    }
+    if (text.startsWith('/ghost ')) {
+      const parts = text.slice(7).trim().split(' ')
+      if (parts.length >= 2) {
+        sayNickServ(`GHOST ${parts[0]} ${parts[1]}`)
+        return
+      }
+    }
+    if (text === '/help') {
+      for (const line of HELP_LINES) addMessage('*', line, 'event')
+      return
+    }
     sendMessage(text)
   }
 
   return (
     <div className="d-flex flex-column px-4 py-3" style={{ height: '100dvh' }}>
       <div className="d-flex align-items-center gap-3 mb-3">
+        <img src={lizardIcon} alt="" style={{ height: 32 }} />
         <h4 className="mb-0">Lizardnet</h4>
-        {connected && <button className="btn btn-sm btn-outline-danger" onClick={disconnect}>Disconnect</button>}
         {isOper && <button className="btn btn-sm btn-outline-warning" onClick={() => setShowAdminConsole(true)}>Admin console</button>}
-        <button className="btn btn-sm btn-outline-secondary ms-auto" onClick={() => setShowConnectModal(true)}>
+        <button
+          className="btn btn-sm btn-outline-secondary ms-auto"
+          onClick={() => connected ? setShowNickPopup(true) : setShowConnectModal(true)}
+        >
           {nick ? <>Nick: <strong>{nick}</strong></> : 'Set nickname'}
         </button>
       </div>
@@ -82,6 +128,14 @@ export default function App() {
         <ConnectModal
           onConnect={(n, p) => { connect(n, p); setShowConnectModal(false) }}
           onRegister={(n, p, e) => { register(n, p, e); setShowConnectModal(false) }}
+        />
+      )}
+
+      {showNickPopup && (
+        <ChangeNickPopup
+          currentNick={nick}
+          onConfirm={changeNick}
+          onClose={() => setShowNickPopup(false)}
         />
       )}
     </div>
