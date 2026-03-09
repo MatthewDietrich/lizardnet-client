@@ -11,7 +11,7 @@ import ChatInput from './components/ChatInput'
 import ChangeNickPopup from './components/ChangeNickPopup'
 
 export default function App() {
-  const { nick, connected, isOper, messages, users, ops, bannedUsers, topic, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction } = useIrcClient()
+  const { nick, connected, isOper, messages, users, ops, bannedUsers, topic, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction } = useIrcClient()
 
   const [menuUser, setMenuUser] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })

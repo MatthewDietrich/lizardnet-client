@@ -2,6 +2,13 @@ import type { CSSProperties, ReactNode } from 'react'
 import { TwitterEmbed, getTwitterInfo } from './components/TwitterEmbed'
 import { BlueskyEmbed, getBlueskyUrl } from './components/BlueskyEmbed'
 
+function isImageUrl(url: string): boolean {
+  try {
+    const path = new URL(url).pathname.toLowerCase()
+    return /\.(png|jpe?g|gif|webp|avif|svg)$/.test(path)
+  } catch { return false }
+}
+
 function getYouTubeId(url: string): string | null {
   try {
     const u = new URL(url)
@@ -90,6 +97,13 @@ export function parseIrc(text: string): ReactNode[] {
       const bskyUrl = getBlueskyUrl(parts[j])
       if (bskyUrl) {
         nodes.push(<BlueskyEmbed key={key++} url={bskyUrl} />)
+      }
+      if (isImageUrl(parts[j])) {
+        nodes.push(
+          <div key={key++} style={{ marginTop: '0.5em' }}>
+            <img src={parts[j]} alt="" style={{ maxWidth: 400, maxHeight: 300, display: 'block', borderRadius: 8 }} />
+          </div>
+        )
       }
     }
     buffer = ''
