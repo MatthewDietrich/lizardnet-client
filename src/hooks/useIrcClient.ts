@@ -105,7 +105,7 @@ export function useIrcClient() {
       addMessage('*', `${who} has joined`, 'event')
     })
 
-    client.on('kick', ({ kicked, nick: by, channel, message }) => {
+    client.on('kick', ({ kicked, nick: by, channel }) => {
       if (channel.toLowerCase() !== '#chat') return
       setUsers(prev => prev.filter(u => u !== kicked))
       addMessage('*', `${kicked} was kicked by ${by}`, 'event')
