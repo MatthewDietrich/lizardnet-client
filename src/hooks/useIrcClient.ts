@@ -57,7 +57,7 @@ export function useIrcClient() {
         setTopicState(p[1])
         addMessage('*', `Topic changed to: ${p[1]}`, 'event')
       }
-      if (cmd === '381') setIsOper(true)
+      if (cmd === '381') { setIsOper(true); client.raw('MODE #chat +b') }
       if (cmd === '367' && p[1]?.toLowerCase() === '#chat' && p[2]) {
         setBannedUsers(prev => prev.includes(p[2]) ? prev : [...prev, p[2]])
       }
@@ -148,7 +148,8 @@ export function useIrcClient() {
     client.on('notice', () => { /* suppress */ })
 
     client.on('close', () => {
-      if (clientRef.current === client) clientRef.current = null
+      if (clientRef.current !== client) return
+      clientRef.current = null
       setConnected(false)
       setIsOper(false)
       setUsers([])
@@ -180,7 +181,6 @@ export function useIrcClient() {
         client.raw(`OPER ${chosenNick} ${password}`)
       }
       client.join('#chat')
-      client.raw('MODE #chat +b')
     })
 
     attachListeners(client, normalizedNick)
@@ -208,6 +208,12 @@ export function useIrcClient() {
   function disconnect() {
     clientRef.current?.quit('Goodbye')
     clientRef.current = null
+    setConnected(false)
+    setIsOper(false)
+    setUsers([])
+    setOps([])
+    setBannedUsers([])
+    addMessage('*', 'Disconnected.', 'event')
   }
 
   function sendMessage(text: string) {
