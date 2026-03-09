@@ -7,9 +7,9 @@ interface Props {
 
 export default function ConnectModal({ onConnect, onRegister }: Props) {
   const [tab, setTab] = useState<'connect' | 'register'>('connect')
-  const [nickInput, setNickInput] = useState('')
+  const [nickInput, setNickInput] = useState(() => localStorage.getItem('lastNick') ?? '')
   const [passwordInput, setPasswordInput] = useState('')
-  const [regNick, setRegNick] = useState('')
+  const [regNick, setRegNick] = useState(() => localStorage.getItem('lastNick') ?? '')
   const [regPassword, setRegPassword] = useState('')
   const [regEmail, setRegEmail] = useState('')
 
@@ -17,6 +17,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
     e.preventDefault()
     const nick = nickInput.trim()
     if (!nick) return
+    localStorage.setItem('lastNick', nick)
     onConnect(nick, passwordInput)
   }
 
@@ -26,6 +27,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
     const password = regPassword.trim()
     const email = regEmail.trim()
     if (!nick || !password || !email) return
+    localStorage.setItem('lastNick', nick)
     onRegister(nick, password, email)
   }
 
