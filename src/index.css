@@ -1,0 +1,145 @@
+:root {
+  --c-bg:          #000000;
+  --c-primary:     #9ABEAA;
+  --c-secondary:   #9A9CBE;
+  --c-tertiary:    #BE9AAE;
+  --c-quaternary:  #BEBC9A;
+  --c-border:      rgba(154, 190, 170, 0.2);
+  --c-border-dim:  rgba(154, 190, 170, 0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-primary);
+  font-family: 'Roboto', system-ui, sans-serif;
+}
+
+/* ── Buttons ────────────────────────────────────────────── */
+
+.btn-primary {
+  background: transparent !important;
+  border-color: var(--c-primary) !important;
+  color: var(--c-primary) !important;
+}
+.btn-primary:hover:not(:disabled), .btn-primary:active:not(:disabled) {
+  background: var(--c-primary) !important;
+  color: #000 !important;
+}
+.btn-primary:focus-visible { box-shadow: 0 0 0 2px rgba(154,190,170,.3) !important; }
+.btn-primary:disabled { border-color: #222 !important; color: #333 !important; }
+
+.btn-warning {
+  background: transparent !important;
+  border-color: var(--c-quaternary) !important;
+  color: var(--c-quaternary) !important;
+}
+.btn-warning:hover:not(:disabled), .btn-warning:active:not(:disabled) {
+  background: var(--c-quaternary) !important;
+  color: #000 !important;
+}
+.btn-warning:disabled { border-color: #222 !important; color: #333 !important; }
+
+.btn-outline-danger {
+  color: var(--c-tertiary) !important;
+  border-color: var(--c-tertiary) !important;
+}
+.btn-outline-danger:hover {
+  background: var(--c-tertiary) !important;
+  color: #000 !important;
+}
+
+.btn-outline-warning {
+  color: var(--c-quaternary) !important;
+  border-color: var(--c-quaternary) !important;
+}
+.btn-outline-warning:hover {
+  background: var(--c-quaternary) !important;
+  color: #000 !important;
+}
+
+.btn-outline-secondary {
+  color: var(--c-secondary) !important;
+  border-color: var(--c-secondary) !important;
+}
+.btn-outline-secondary:hover {
+  background: var(--c-secondary) !important;
+  color: #000 !important;
+}
+
+/* ── Form controls ──────────────────────────────────────── */
+
+.form-control {
+  background: #000 !important;
+  border-color: var(--c-border) !important;
+  color: var(--c-primary) !important;
+}
+.form-control:focus {
+  border-color: var(--c-primary) !important;
+  box-shadow: 0 0 0 2px rgba(154,190,170,.15) !important;
+}
+.form-control::placeholder { color: #333 !important; }
+.form-control:disabled {
+  border-color: var(--c-border-dim) !important;
+  color: #2a2a2a !important;
+}
+
+/* ── Modals ─────────────────────────────────────────────── */
+
+.modal-content {
+  background: #000;
+  border: 1px solid var(--c-primary);
+  color: var(--c-primary);
+}
+.modal-header {
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-primary);
+}
+.modal-footer { border-top: 1px solid var(--c-border); }
+.modal-backdrop.show { background: #000; opacity: 0.85; }
+.btn-close { filter: invert(1) sepia(1) saturate(2) hue-rotate(100deg); opacity: 0.6; }
+.btn-close:hover { opacity: 1; }
+
+/* ── Nav tabs (ConnectModal) ────────────────────────────── */
+
+.nav-tabs { border-bottom: 1px solid var(--c-border); }
+.nav-tabs .nav-link { color: #444; border-color: transparent !important; }
+.nav-tabs .nav-link:hover { color: var(--c-secondary); border-color: transparent !important; }
+.nav-tabs .nav-link.active {
+  background: #000 !important;
+  border-color: var(--c-border) var(--c-border) #000 !important;
+  color: var(--c-primary) !important;
+}
+
+/* ── Cards (UserMenu) ───────────────────────────────────── */
+
+.card {
+  background: #000;
+  border: 1px solid var(--c-primary) !important;
+  color: var(--c-primary);
+}
+.card-header {
+  background: #000;
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-primary);
+}
+
+/* ── List group (UserMenu) ──────────────────────────────── */
+
+.list-group-item {
+  background: #000 !important;
+  border-color: var(--c-border) !important;
+  color: var(--c-primary) !important;
+}
+.list-group-item-action:hover, .list-group-item-action:focus {
+  background: rgba(154,190,170,.07) !important;
+  color: var(--c-primary) !important;
+}
+
+/* ── Utility overrides ──────────────────────────────────── */
+
+.bg-light { background: #000 !important; }
+.border   { border-color: var(--c-border) !important; }
+.text-muted { color: var(--c-secondary) !important; }
