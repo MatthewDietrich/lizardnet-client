@@ -1,5 +1,16 @@
 import type { CSSProperties, ReactNode } from 'react'
 
+function getYouTubeId(url: string): string | null {
+  try {
+    const u = new URL(url)
+    if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('?')[0]
+    if (u.hostname === 'www.youtube.com' || u.hostname === 'youtube.com') {
+      return u.searchParams.get('v')
+    }
+  } catch { /* invalid url */ }
+  return null
+}
+
 const COLORS: Record<number, string> = {
   0:  '#ffffff', 1:  '#000000', 2:  '#00007f', 3:  '#009300',
   4:  '#ff0000', 5:  '#7f0000', 6:  '#9c009c', 7:  '#fc7f00',
@@ -43,7 +54,34 @@ export function parseIrc(text: string): ReactNode[] {
     if (style.strikethrough) decorations.push('line-through')
     if (decorations.length)  css.textDecoration = decorations.join(' ')
 
-    nodes.push(<span key={key++} style={Object.keys(css).length ? css : undefined}>{buffer}</span>)
+    const urlRegex = /(https?:\/\/[^\s]+)/g
+    const parts = buffer.split(urlRegex)
+    const spanStyle = Object.keys(css).length ? css : undefined
+    nodes.push(
+      <span key={key++} style={spanStyle}>
+        {parts.map((part, j) =>
+          j % 2 === 1
+            ? <a key={j} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
+            : part
+        )}
+      </span>
+    )
+    for (let j = 1; j < parts.length; j += 2) {
+      const videoId = getYouTubeId(parts[j])
+      if (videoId) {
+        nodes.push(
+          <div key={key++} style={{ marginTop: '0.5em' }}>
+            <iframe
+              width="400" height="225"
+              src={`https://www.youtube-nocookie.com/embed/${videoId}`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ border: 'none', display: 'block' }}
+            />
+          </div>
+        )
+      }
+    }
     buffer = ''
   }
 

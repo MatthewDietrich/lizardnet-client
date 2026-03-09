@@ -13,19 +13,24 @@ export function useIrcClient() {
   const [users, setUsers] = useState<string[]>([])
   const [ops, setOps] = useState<string[]>([])
   const [bannedUsers, setBannedUsers] = useState<string[]>([])
+  const [topic, setTopicState] = useState('')
 
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
   const rawOutputRef = useRef(false)
   const rawOutputTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function addMessage(from: string, text: string, kind: 'chat' | 'event' = 'chat') {
+  function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' = 'chat') {
     setMessages(prev => [...prev, { from, text, ts: new Date(), kind }])
   }
 
   function attachListeners(client: InstanceType<typeof IRC.Client>, chosenNick: string) {
-    client.on('message', ({ nick: who, message }) => {
+    client.on('message', ({ nick: who, target, message }) => {
       if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
-      addMessage(who, message)
+      if (target?.toLowerCase() === '#chat') {
+        addMessage(who, message)
+      } else {
+        addMessage(who, message, 'pm')
+      }
     })
 
     client.on('raw', (event: unknown) => {
@@ -45,6 +50,13 @@ export function useIrcClient() {
         if (parts[i]) p.push(parts[i])
       }
 
+      if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) {
+        setTopicState(p[2])
+      }
+      if (cmd === 'TOPIC' && p[0]?.toLowerCase() === '#chat' && p[1] !== undefined) {
+        setTopicState(p[1])
+        addMessage('*', `Topic changed to: ${p[1]}`, 'event')
+      }
       if (cmd === '381') setIsOper(true)
       if (cmd === '367' && p[1]?.toLowerCase() === '#chat' && p[2]) {
         setBannedUsers(prev => prev.includes(p[2]) ? prev : [...prev, p[2]])
@@ -136,6 +148,7 @@ export function useIrcClient() {
     client.on('notice', () => { /* suppress */ })
 
     client.on('close', () => {
+      if (clientRef.current === client) clientRef.current = null
       setConnected(false)
       setIsOper(false)
       setUsers([])
@@ -150,15 +163,18 @@ export function useIrcClient() {
   }
 
   function connect(chosenNick: string, password: string) {
-    setNick(chosenNick)
+    clientRef.current?.quit('Reconnecting')
+    clientRef.current = null
+    const normalizedNick = chosenNick.replace(" ", "_")
+    setNick(normalizedNick)
 
     const client = new IRC.Client()
-    client.connect({ host: HOST, port: PORT, nick: chosenNick, tls: true })
+    client.connect({ host: HOST, port: PORT, nick: normalizedNick, tls: true })
 
     client.on('registered', () => {
       setConnected(true)
       addMessage('*', 'Connected')
-      addMessage('*', `You are now logged in as ${chosenNick}`)
+      addMessage('*', `You are now logged in as ${normalizedNick}`)
       if (password) {
         client.say('NickServ', `IDENTIFY ${password}`)
         client.raw(`OPER ${chosenNick} ${password}`)
@@ -167,7 +183,7 @@ export function useIrcClient() {
       client.raw('MODE #chat +b')
     })
 
-    attachListeners(client, chosenNick)
+    attachListeners(client, normalizedNick)
     clientRef.current = client
   }
 
@@ -198,6 +214,12 @@ export function useIrcClient() {
     if (!text.trim() || !clientRef.current) return
     clientRef.current.say('#chat', text)
     addMessage(nick, text)
+  }
+
+  function sendPrivMsg(target: string, text: string) {
+    if (!text.trim() || !clientRef.current) return
+    clientRef.current.say(target, text)
+    addMessage('*', `-> ${target}: ${text}`, 'event')
   }
 
   function sendRaw(command: string) {
@@ -233,5 +255,9 @@ export function useIrcClient() {
     clientRef.current?.raw(`MODE #chat -o ${target}`)
   }
 
-  return { nick, connected, isOper, messages, users, ops, bannedUsers, connect, register, disconnect, sendMessage, sendRaw, whois, kick, ban, unban, op, deop }
+  function changeTopic(newTopic: string) {
+    clientRef.current?.raw(`TOPIC #chat :${newTopic}`)
+  }
+
+  return { nick, connected, isOper, messages, users, ops, bannedUsers, topic, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic }
 }
