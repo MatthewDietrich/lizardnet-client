@@ -1,7 +1,12 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { get as getEmoji } from 'node-emoji'
 import { TwitterEmbed, getTwitterInfo } from './components/TwitterEmbed'
 import { BlueskyEmbed, getBlueskyUrl } from './components/BlueskyEmbed'
 import { InlineImage } from './components/InlineImage'
+
+function replaceEmojis(text: string): string {
+  return text.replace(/:([a-z0-9_+-]+):/g, (match, name) => getEmoji(name) ?? match)
+}
 
 function isImageUrl(url: string): boolean {
   try {
@@ -52,6 +57,7 @@ export function parseIrc(text: string): ReactNode[] {
 
   function flush() {
     if (!buffer) return
+    buffer = replaceEmojis(buffer)
     const css: CSSProperties = {}
     if (style.bold)          css.fontWeight = 'bold'
     if (style.italic)        css.fontStyle = 'italic'
