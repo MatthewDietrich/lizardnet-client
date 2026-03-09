@@ -149,3 +149,8 @@ body {
 .bg-light { background: var(--c-surface) !important; }
 .border   { border-color: var(--c-border) !important; }
 .text-muted { color: var(--c-secondary) !important; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}

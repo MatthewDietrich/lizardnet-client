@@ -11,7 +11,7 @@ import ChatInput from './components/ChatInput'
 import ChangeNickPopup from './components/ChangeNickPopup'
 
 export default function App() {
-  const { nick, connected, isOper, messages, users, ops, bannedUsers, topic, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction } = useIrcClient()
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction } = useIrcClient()
 
   const [menuUser, setMenuUser] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
@@ -76,6 +76,11 @@ export default function App() {
       <div className="d-flex align-items-center gap-3 mb-3">
         <img src={lizardIcon} alt="" style={{ height: 32 }} />
         <h4 className="mb-0">Lizardnet</h4>
+        <span title={connStatus} style={{
+          width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+          background: connStatus === 'connected' ? 'var(--c-primary)' : connStatus === 'disconnected' ? 'var(--c-tertiary)' : 'var(--c-quaternary)',
+          animation: connStatus === 'connecting' || connStatus === 'reconnecting' ? 'pulse 1s ease-in-out infinite' : 'none',
+        }} />
         {(isOper || ops.includes(nick)) && <button className="btn btn-sm btn-outline-warning" onClick={() => setShowAdminConsole(true)}>Moderator Console</button>}
         <button
           className="btn btn-sm btn-outline-secondary ms-auto"

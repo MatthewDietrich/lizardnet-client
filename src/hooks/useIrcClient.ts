@@ -5,9 +5,12 @@ import type { Message } from '../types'
 const HOST = 'irc.lizard.fun'
 const PORT = 7003
 
+export type ConnStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
+
 export function useIrcClient() {
   const [nick, setNick] = useState('')
   const [connected, setConnected] = useState(false)
+  const [connStatus, setConnStatus] = useState<ConnStatus>('disconnected')
   const [isOper, setIsOper] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [users, setUsers] = useState<string[]>([])
@@ -18,6 +21,10 @@ export function useIrcClient() {
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
   const rawOutputRef = useRef(false)
   const rawOutputTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const credentialsRef = useRef<{ nick: string; password: string } | null>(null)
+  const manualDisconnectRef = useRef(false)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const reconnectDelayRef = useRef(2000)
 
   function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat') {
     setMessages(prev => [...prev, { from, text, ts: new Date(), kind }])
@@ -181,7 +188,24 @@ export function useIrcClient() {
       setUsers([])
       setOps([])
       setBannedUsers([])
-      addMessage('*', 'Disconnected.', 'event')
+
+      if (manualDisconnectRef.current) {
+        manualDisconnectRef.current = false
+        setConnStatus('disconnected')
+        addMessage('*', 'Disconnected.', 'event')
+        return
+      }
+
+      // Unexpected disconnect — schedule reconnect with exponential backoff
+      const delay = reconnectDelayRef.current
+      reconnectDelayRef.current = Math.min(delay * 2, 30000)
+      setConnStatus('reconnecting')
+      addMessage('*', `Disconnected. Reconnecting in ${delay / 1000}s…`, 'event')
+      reconnectTimerRef.current = setTimeout(() => {
+        if (credentialsRef.current) {
+          connectCore(credentialsRef.current.nick, credentialsRef.current.password, true)
+        }
+      }, delay)
     })
 
     client.on('error', (err) => {
@@ -189,19 +213,25 @@ export function useIrcClient() {
     })
   }
 
-  function connect(chosenNick: string, password: string) {
-    clientRef.current?.quit('Reconnecting')
-    clientRef.current = null
-    const normalizedNick = chosenNick.replace(" ", "_")
-    setNick(normalizedNick)
+  function connectCore(chosenNick: string, password: string, isReconnect: boolean) {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
 
     const client = new IRC.Client()
-    client.connect({ host: HOST, port: PORT, nick: normalizedNick, tls: true })
+    client.connect({ host: HOST, port: PORT, nick: chosenNick, tls: true })
 
     client.on('registered', () => {
       setConnected(true)
-      addMessage('*', 'Connected')
-      addMessage('*', `You are now logged in as ${normalizedNick}`)
+      setConnStatus('connected')
+      reconnectDelayRef.current = 2000 // reset backoff on successful connect
+      if (isReconnect) {
+        addMessage('*', 'Reconnected.', 'event')
+      } else {
+        addMessage('*', 'Connected')
+        addMessage('*', `You are now logged in as ${chosenNick}`)
+      }
       if (password) {
         client.say('NickServ', `IDENTIFY ${password}`)
         client.raw(`OPER ${chosenNick} ${password}`)
@@ -209,18 +239,36 @@ export function useIrcClient() {
       client.join('#chat')
     })
 
-    attachListeners(client, normalizedNick)
+    attachListeners(client, chosenNick)
     clientRef.current = client
+  }
+
+  function connect(chosenNick: string, password: string) {
+    clientRef.current?.quit('Reconnecting')
+    clientRef.current = null
+    manualDisconnectRef.current = false
+    const normalizedNick = chosenNick.replace(' ', '_')
+    setNick(normalizedNick)
+    credentialsRef.current = { nick: normalizedNick, password }
+    reconnectDelayRef.current = 2000
+    setConnStatus('connecting')
+    connectCore(normalizedNick, password, false)
   }
 
   function register(chosenNick: string, password: string, email: string) {
     setNick(chosenNick)
+    credentialsRef.current = { nick: chosenNick, password }
+    manualDisconnectRef.current = false
+    reconnectDelayRef.current = 2000
+    setConnStatus('connecting')
 
     const client = new IRC.Client()
     client.connect({ host: HOST, port: PORT, nick: chosenNick, tls: true })
 
     client.on('registered', () => {
       setConnected(true)
+      setConnStatus('connected')
+      reconnectDelayRef.current = 2000
       addMessage('*', 'Connected')
       addMessage('*', `You are now logged in as ${chosenNick}`)
       client.say('NickServ', `REGISTER ${password} ${email}`)
@@ -232,9 +280,15 @@ export function useIrcClient() {
   }
 
   function disconnect() {
+    manualDisconnectRef.current = true
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
     clientRef.current?.quit('Goodbye')
     clientRef.current = null
     setConnected(false)
+    setConnStatus('disconnected')
     setIsOper(false)
     setUsers([])
     setOps([])
@@ -306,5 +360,5 @@ export function useIrcClient() {
     addMessage(nick, text, 'action')
   }
 
-  return { nick, connected, isOper, messages, users, ops, bannedUsers, topic, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction }
+  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction }
 }
