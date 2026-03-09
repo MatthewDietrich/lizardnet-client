@@ -1,4 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { TwitterEmbed, getTwitterInfo } from './components/TwitterEmbed'
+import { BlueskyEmbed, getBlueskyUrl } from './components/BlueskyEmbed'
 
 function getYouTubeId(url: string): string | null {
   try {
@@ -80,6 +82,14 @@ export function parseIrc(text: string): ReactNode[] {
             />
           </div>
         )
+      }
+      const twitterInfo = getTwitterInfo(parts[j])
+      if (twitterInfo) {
+        nodes.push(<TwitterEmbed key={key++} {...twitterInfo} />)
+      }
+      const bskyUrl = getBlueskyUrl(parts[j])
+      if (bskyUrl) {
+        nodes.push(<BlueskyEmbed key={key++} url={bskyUrl} />)
       }
     }
     buffer = ''

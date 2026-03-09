@@ -165,6 +165,8 @@ export function useIrcClient() {
       if (e.nick?.toLowerCase() === 'nickserv') {
         // Drop "Last login from: <user>@<host> on <date>." lines
         if (/^Last login from:/i.test(text)) return
+        // Drop network welcome/service intro messages
+        if (/^Welcome to /i.test(text)) return
         // Replace "/msg NickServ IDENTIFY [nick] <password>" with "/identify <password>"
         text = text.replace(/\/msg NickServ IDENTIFY(?:\s+\S+)?\s+(\S+)/gi, '/identify $1')
         addMessage('NickServ', text, 'event')

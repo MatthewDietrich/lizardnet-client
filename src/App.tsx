@@ -76,7 +76,7 @@ export default function App() {
       <div className="d-flex align-items-center gap-3 mb-3">
         <img src={lizardIcon} alt="" style={{ height: 32 }} />
         <h4 className="mb-0">Lizardnet</h4>
-        {isOper && <button className="btn btn-sm btn-outline-warning" onClick={() => setShowAdminConsole(true)}>Admin console</button>}
+        {(isOper || ops.includes(nick)) && <button className="btn btn-sm btn-outline-warning" onClick={() => setShowAdminConsole(true)}>Moderator Console</button>}
         <button
           className="btn btn-sm btn-outline-secondary ms-auto"
           onClick={() => connected ? setShowNickPopup(true) : setShowConnectModal(true)}
