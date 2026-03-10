@@ -1,5 +1,15 @@
 import { useState } from 'react'
 
+const NICK_RE = /^[a-zA-Z\[\]\\`^{|}_][a-zA-Z0-9\[\]\\`^{|}_\-]*$/
+
+function nickError(nick: string): string | null {
+  if (!nick) return null
+  if (/^\d/.test(nick)) return 'Nickname cannot start with a number'
+  if (/^-/.test(nick)) return 'Nickname cannot start with a hyphen'
+  if (!NICK_RE.test(nick)) return 'Nickname contains invalid characters'
+  return null
+}
+
 interface Props {
   onConnect: (nick: string, password: string) => void
   onRegister: (nick: string, password: string, email: string) => void
@@ -13,10 +23,13 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
   const [regPassword, setRegPassword] = useState('')
   const [regEmail, setRegEmail] = useState('')
 
+  const connectNickError = nickError(nickInput.trim())
+  const registerNickError = nickError(regNick.trim())
+
   function handleConnect(e: { preventDefault(): void }) {
     e.preventDefault()
     const nick = nickInput.trim()
-    if (!nick) return
+    if (!nick || connectNickError) return
     localStorage.setItem('lastNick', nick)
     onConnect(nick, passwordInput)
   }
@@ -26,7 +39,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
     const nick = regNick.trim()
     const password = regPassword.trim()
     const email = regEmail.trim()
-    if (!nick || !password || !email) return
+    if (!nick || registerNickError || !password || !email) return
     localStorage.setItem('lastNick', nick)
     onRegister(nick, password, email)
   }
@@ -74,13 +87,14 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
               {tab === 'connect' && (
                 <form id="connect-form" onSubmit={handleConnect}>
                   <input
-                    className="form-control mb-2"
+                    className="form-control mb-1"
                     placeholder="Nickname (e.g. reptile42)"
                     value={nickInput}
                     onChange={e => setNickInput(e.target.value)}
                     autoFocus
                     maxLength={30}
                   />
+                  {connectNickError && <div style={{ fontSize: 12, color: 'var(--c-tertiary)', marginBottom: 4 }}>{connectNickError}</div>}
                   <input
                     className="form-control"
                     type="password"
@@ -94,13 +108,14 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
               {tab === 'register' && (
                 <form id="register-form" onSubmit={handleRegister}>
                   <input
-                    className="form-control mb-2"
+                    className="form-control mb-1"
                     placeholder="Nickname"
                     value={regNick}
                     onChange={e => setRegNick(e.target.value)}
                     autoFocus
                     maxLength={30}
                   />
+                  {registerNickError && <div style={{ fontSize: 12, color: 'var(--c-tertiary)', marginBottom: 4 }}>{registerNickError}</div>}
                   <input
                     className="form-control mb-2"
                     type="password"
@@ -121,7 +136,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
 
             <div className="modal-footer">
               {tab === 'connect' && (
-                <button form="connect-form" type="submit" className="btn btn-primary" disabled={!nickInput.trim()}>
+                <button form="connect-form" type="submit" className="btn btn-primary" disabled={!nickInput.trim() || !!connectNickError}>
                   Let's go
                 </button>
               )}
@@ -130,7 +145,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
                   form="register-form"
                   type="submit"
                   className="btn btn-primary"
-                  disabled={!regNick.trim() || !regPassword.trim() || !regEmail.trim()}
+                  disabled={!regNick.trim() || !!registerNickError || !regPassword.trim() || !regEmail.trim()}
                 >
                   Register & connect
                 </button>

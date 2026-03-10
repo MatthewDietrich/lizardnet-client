@@ -126,7 +126,7 @@ export default function App() {
           className="btn btn-sm btn-outline-secondary ms-auto"
           onClick={() => connected ? setShowNickPopup(true) : setShowConnectModal(true)}
         >
-          {nick ? <>Nick: <strong>{nick}</strong></> : 'Set nickname'}
+          {nick ? <>Nickname: <strong>{nick}</strong></> : 'Set nickname'}
         </button>
       </div>
 
