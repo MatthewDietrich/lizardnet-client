@@ -11,7 +11,7 @@ import ChatInput from './components/ChatInput'
 import ChangeNickPopup from './components/ChangeNickPopup'
 
 export default function App() {
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction } = useIrcClient()
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack } = useIrcClient()
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -30,6 +30,8 @@ export default function App() {
     '/identify <password>         — identify a registered nickname (log in)',
     '/register <password> <email> — register nickname',
     '/ghost <nick> <password>     — disconnect a ghost using your nickname',
+    '/away [message]              — set yourself as away',
+    '/back                        — return from away',
     '/help                        — show this help',
   ]
 
@@ -68,6 +70,14 @@ export default function App() {
         return
       }
     }
+    if (text === '/away' || text.startsWith('/away ')) {
+      setAway(text.slice(6))
+      return
+    }
+    if (text === '/back') {
+      setBack()
+      return
+    }
     if (text === '/help') {
       for (const line of HELP_LINES) addMessage('*', line, 'event')
       return
@@ -101,6 +111,7 @@ export default function App() {
         <UserList
           users={users}
           ops={ops}
+          awayUsers={awayUsers}
           nick={nick}
           onUserClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
         />

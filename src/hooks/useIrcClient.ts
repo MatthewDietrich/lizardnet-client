@@ -22,6 +22,7 @@ export function useIrcClient() {
   const [bannedUsers, setBannedUsers] = useState<string[]>([])
   const [topic, setTopicState] = useState('')
   const [unreadCount, setUnreadCount] = useState(0)
+  const [awayUsers, setAwayUsers] = useState<Set<string>>(new Set())
 
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
   const rawOutputRef = useRef(false)
@@ -92,6 +93,14 @@ export function useIrcClient() {
         setTopicState(p[1])
         addMessage('*', `Topic changed to: ${p[1]}`, 'event')
       }
+      if (cmd === '305') {
+        addMessage('*', 'You are no longer marked as away.', 'event')
+        setAwayUsers(prev => { const s = new Set(prev); s.delete(nickRef.current); return s })
+      }
+      if (cmd === '306') {
+        addMessage('*', 'You have been marked as away.', 'event')
+        setAwayUsers(prev => new Set([...prev, nickRef.current]))
+      }
       if (cmd === '381') { setIsOper(true); client.raw('MODE #chat +b') }
       if (cmd === '367' && p[1]?.toLowerCase() === '#chat' && p[2]) {
         setBannedUsers(prev => prev.includes(p[2]) ? prev : [...prev, p[2]])
@@ -144,6 +153,16 @@ export function useIrcClient() {
       }
     })
 
+    // Track away status for self and other users via irc-framework's native away/back events
+    client.on('away', (event: unknown) => {
+      const e = event as { nick: string }
+      setAwayUsers(prev => new Set([...prev, e.nick]))
+    })
+    client.on('back', (event: unknown) => {
+      const e = event as { nick: string }
+      setAwayUsers(prev => { const s = new Set(prev); s.delete(e.nick); return s })
+    })
+
     client.on('join', ({ nick: who, channel }) => {
       if (who === chosenNick) return
       if (channel.toLowerCase() !== '#chat') return
@@ -162,12 +181,14 @@ export function useIrcClient() {
       const e = event as { nick: string; channel: string; message?: string }
       if (e.channel.toLowerCase() !== '#chat') return
       setUsers(prev => prev.filter(u => u !== e.nick))
+      setAwayUsers(prev => { const s = new Set(prev); s.delete(e.nick); return s })
       addMessage('*', `${e.nick} has left${e.message ? ` (${e.message})` : ''}`, 'event')
     })
 
     client.on('quit', (event: unknown) => {
       const e = event as { nick: string; message?: string }
       setUsers(prev => prev.filter(u => u !== e.nick))
+      setAwayUsers(prev => { const s = new Set(prev); s.delete(e.nick); return s })
       addMessage('*', `${e.nick} has quit`, 'event')
     })
 
@@ -185,6 +206,10 @@ export function useIrcClient() {
       if (e.nick === chosenNick) { setNick(e.new_nick); nickRef.current = e.new_nick }
       setUsers(prev => prev.map(u => u === e.nick ? e.new_nick : u).sort((a, b) => a.localeCompare(b)))
       setOps(prev => prev.map(u => u === e.nick ? e.new_nick : u))
+      setAwayUsers(prev => {
+        if (!prev.has(e.nick)) return prev
+        const s = new Set(prev); s.delete(e.nick); s.add(e.new_nick); return s
+      })
       addMessage('*', `${e.nick} is now known as ${e.new_nick}`, 'event')
     })
 
@@ -212,6 +237,7 @@ export function useIrcClient() {
       setOps([])
       setBannedUsers([])
 
+      setAwayUsers(new Set())
       if (manualDisconnectRef.current) {
         manualDisconnectRef.current = false
         setConnStatus('disconnected')
@@ -318,6 +344,7 @@ export function useIrcClient() {
     setUsers([])
     setOps([])
     setBannedUsers([])
+    setAwayUsers(new Set())
     addMessage('*', 'Disconnected.', 'event')
   }
 
@@ -385,5 +412,13 @@ export function useIrcClient() {
     addMessage(nick, text, 'action')
   }
 
-  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction }
+  function setAway(message: string) {
+    clientRef.current?.raw(`AWAY :${message}`)
+  }
+
+  function setBack() {
+    clientRef.current?.raw('AWAY')
+  }
+
+  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack }
 }

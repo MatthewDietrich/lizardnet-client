@@ -1,4 +1,4 @@
-import { useRef, useMemo, memo, useLayoutEffect, useState, useEffect } from 'react'
+import { useRef, useMemo, memo, useLayoutEffect, useState, useEffect, useCallback } from 'react'
 import { parseIrc } from '../ircFormat'
 import type { Message } from '../types'
 
@@ -14,26 +14,38 @@ const mentionStyle = {
   marginLeft: '-0.5em',
 }
 
-const MessageRow = memo(function MessageRow({ m, mentioned }: { m: Message; mentioned: boolean }) {
+function highlight(text: string, term: string) {
+  if (!term) return text
+  const parts = text.split(new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
+  return parts.map((part, i) =>
+    part.toLowerCase() === term.toLowerCase()
+      ? <mark key={i} style={{ padding: 0, background: 'rgba(255,220,0,0.5)', color: 'inherit' }}>{part}</mark>
+      : part
+  )
+}
+
+const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm }: { m: Message; mentioned: boolean; searchTerm: string }) {
   const ts = <span style={{ fontSize: 11, color: 'var(--c-disabled-fg)' }}>{m.ts.toLocaleTimeString()}</span>
+  const text = searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text)
+  const from = searchTerm ? highlight(m.from, searchTerm) : m.from
   if (m.kind === 'event') return (
     <div className="fst-italic" style={{ fontSize: 12, color: 'var(--c-tertiary)' }}>
-      {ts}{' '}{parseIrc(m.text)}
+      {ts}{' '}{searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text)}
     </div>
   )
   if (m.kind === 'action') return (
     <div className="fst-italic" style={mentioned ? mentionStyle : undefined}>
-      {ts}{' '}<strong>{m.from}</strong> {parseIrc(m.text)}
+      {ts}{' '}<strong>{from}</strong> {text}
     </div>
   )
   if (m.kind === 'pm') return (
     <div style={{ color: 'var(--c-quaternary)' }}>
-      {ts}{' '}<span style={{ opacity: 0.6 }}>[PM]</span> <strong>{m.from}</strong>: {parseIrc(m.text)}
+      {ts}{' '}<span style={{ opacity: 0.6 }}>[PM]</span> <strong>{from}</strong>: {text}
     </div>
   )
   return (
     <div style={mentioned ? mentionStyle : undefined}>
-      {ts}{' '}<strong>{m.from}</strong>: {parseIrc(m.text)}
+      {ts}{' '}<strong>{from}</strong>: {text}
     </div>
   )
 })
@@ -41,8 +53,11 @@ const MessageRow = memo(function MessageRow({ m, mentioned }: { m: Message; ment
 export default function MessageList({ messages, nick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const atBottomRef = useRef(true)
   const [newCount, setNewCount] = useState(0)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     const el = containerRef.current
@@ -57,13 +72,36 @@ export default function MessageList({ messages, nick }: Props) {
   }, [])
 
   useLayoutEffect(() => {
+    if (searchOpen) return
     if (atBottomRef.current) {
       endRef.current?.scrollIntoView()
       setNewCount(0)
     } else {
       setNewCount(n => n + 1)
     }
-  }, [messages])
+  }, [messages, searchOpen])
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        setSearchOpen(true)
+        setTimeout(() => searchInputRef.current?.focus(), 0)
+      }
+      if (e.key === 'Escape') {
+        closeSearch()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false)
+    setSearchTerm('')
+    atBottomRef.current = true
+    setTimeout(() => endRef.current?.scrollIntoView(), 0)
+  }, [])
 
   function scrollToBottom() {
     endRef.current?.scrollIntoView()
@@ -72,22 +110,46 @@ export default function MessageList({ messages, nick }: Props) {
 
   const mentionRegex = useMemo(() => nick ? new RegExp(`\\b${nick}\\b`, 'i') : null, [nick])
 
+  const filteredMessages = useMemo(() => {
+    if (!searchTerm) return messages
+    const lower = searchTerm.toLowerCase()
+    return messages.filter(m => m.text.toLowerCase().includes(lower) || m.from.toLowerCase().includes(lower))
+  }, [messages, searchTerm])
+
   return (
     <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0 }}>
+      {searchOpen && (
+        <div className="d-flex align-items-center gap-2 px-2 py-1 border rounded-top bg-light" style={{ flexShrink: 0, borderBottom: 'none' }}>
+          <input
+            ref={searchInputRef}
+            className="form-control form-control-sm font-monospace"
+            placeholder="Search messages..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            style={{ maxWidth: 260 }}
+          />
+          <span className="text-muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+            {searchTerm ? `${filteredMessages.length} result${filteredMessages.length !== 1 ? 's' : ''}` : ''}
+          </span>
+          <button className="btn-close ms-auto" style={{ fontSize: 10 }} onClick={closeSearch} />
+        </div>
+      )}
       <div
         ref={containerRef}
-        className="border rounded p-3 bg-light font-monospace flex-grow-1"
-        style={{ overflowY: 'auto', fontSize: 13 }}
+        className={`border p-3 bg-light font-monospace flex-grow-1${searchOpen ? '' : ' rounded'}`}
+        style={{ overflowY: 'auto', fontSize: 13, borderRadius: searchOpen ? '0 0 var(--bs-border-radius) var(--bs-border-radius)' : undefined }}
       >
-        {messages.length === 0 && <span className="text-muted">No messages yet.</span>}
-        {messages.map((m, i) => {
+        {filteredMessages.length === 0 && (
+          <span className="text-muted">{searchTerm ? 'No results.' : 'No messages yet.'}</span>
+        )}
+        {filteredMessages.map((m, i) => {
           const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
             m.from !== nick && !!mentionRegex?.test(m.text)
-          return <MessageRow key={i} m={m} mentioned={mentioned} />
+          return <MessageRow key={i} m={m} mentioned={mentioned} searchTerm={searchTerm} />
         })}
         <div ref={endRef} />
       </div>
-      {newCount > 0 && (
+      {newCount > 0 && !searchOpen && (
         <button
           onClick={scrollToBottom}
           className="btn btn-sm btn-primary"
