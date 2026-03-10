@@ -7,6 +7,8 @@ interface Props {
   nick: string
 }
 
+const EMOJI_ONLY_RE = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u200d\ufe0f\u20e3]+$/u
+
 const mentionStyle = {
   background: 'rgba(var(--c-quaternary-rgb, 190, 188, 154), 0.1)',
   borderLeft: '2px solid var(--c-quaternary)',
@@ -43,9 +45,11 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm }: { m: M
       {ts}{' '}<span style={{ opacity: 0.6 }}>[PM]</span> <strong>{from}</strong>: {text}
     </div>
   )
+  const emojiOnly = EMOJI_ONLY_RE.test(m.text.trim())
   return (
     <div style={mentioned ? mentionStyle : undefined}>
-      {ts}{' '}<strong>{from}</strong>: {text}
+      {ts}{' '}<strong>{from}</strong>:{' '}
+      <span style={emojiOnly ? { fontSize: 36, lineHeight: 1.1 } : undefined}>{text}</span>
     </div>
   )
 })
@@ -137,7 +141,7 @@ export default function MessageList({ messages, nick }: Props) {
       <div
         ref={containerRef}
         className={`border p-3 bg-light font-monospace flex-grow-1${searchOpen ? '' : ' rounded'}`}
-        style={{ overflowY: 'auto', fontSize: 13, borderRadius: searchOpen ? '0 0 var(--bs-border-radius) var(--bs-border-radius)' : undefined }}
+        style={{ overflowY: 'auto', fontSize: 16, borderRadius: searchOpen ? '0 0 var(--bs-border-radius) var(--bs-border-radius)' : undefined }}
       >
         {filteredMessages.length === 0 && (
           <span className="text-muted">{searchTerm ? 'No results.' : 'No messages yet.'}</span>

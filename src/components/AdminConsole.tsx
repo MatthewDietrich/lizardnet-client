@@ -23,7 +23,7 @@ export default function AdminConsole({ onClose, onSendRaw, bannedUsers, onUnban 
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-header">
-              <h6 className="modal-title">Admin Console</h6>
+              <h6 className="modal-title">Moderator Console</h6>
               <button type="button" className="btn-close" onClick={onClose} />
             </div>
             <div className="modal-body">
