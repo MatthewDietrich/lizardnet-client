@@ -1,4 +1,4 @@
-import { useRef, useMemo, memo, useLayoutEffect } from 'react'
+import { useRef, useMemo, memo, useLayoutEffect, useState, useEffect } from 'react'
 import { parseIrc } from '../ircFormat'
 import type { Message } from '../types'
 
@@ -39,26 +39,70 @@ const MessageRow = memo(function MessageRow({ m, mentioned }: { m: Message; ment
 })
 
 export default function MessageList({ messages, nick }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const atBottomRef = useRef(true)
+  const [newCount, setNewCount] = useState(0)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    function onScroll() {
+      const el = containerRef.current!
+      atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+      if (atBottomRef.current) setNewCount(0)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
 
   useLayoutEffect(() => {
-    endRef.current?.scrollIntoView()
+    if (atBottomRef.current) {
+      endRef.current?.scrollIntoView()
+      setNewCount(0)
+    } else {
+      setNewCount(n => n + 1)
+    }
   }, [messages])
+
+  function scrollToBottom() {
+    endRef.current?.scrollIntoView()
+    setNewCount(0)
+  }
 
   const mentionRegex = useMemo(() => nick ? new RegExp(`\\b${nick}\\b`, 'i') : null, [nick])
 
   return (
-    <div
-      className="border rounded p-3 bg-light font-monospace flex-grow-1"
-      style={{ overflowY: 'auto', fontSize: 13 }}
-    >
-      {messages.length === 0 && <span className="text-muted">No messages yet.</span>}
-      {messages.map((m, i) => {
-        const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
-          m.from !== nick && !!mentionRegex?.test(m.text)
-        return <MessageRow key={i} m={m} mentioned={mentioned} />
-      })}
-      <div ref={endRef} />
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0 }}>
+      <div
+        ref={containerRef}
+        className="border rounded p-3 bg-light font-monospace flex-grow-1"
+        style={{ overflowY: 'auto', fontSize: 13 }}
+      >
+        {messages.length === 0 && <span className="text-muted">No messages yet.</span>}
+        {messages.map((m, i) => {
+          const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
+            m.from !== nick && !!mentionRegex?.test(m.text)
+          return <MessageRow key={i} m={m} mentioned={mentioned} />
+        })}
+        <div ref={endRef} />
+      </div>
+      {newCount > 0 && (
+        <button
+          onClick={scrollToBottom}
+          className="btn btn-sm btn-primary"
+          style={{
+            position: 'absolute',
+            bottom: 10,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            opacity: 0.9,
+            zIndex: 10,
+          }}
+        >
+          ↓ {newCount} new {newCount === 1 ? 'message' : 'messages'}
+        </button>
+      )}
     </div>
   )
 }
