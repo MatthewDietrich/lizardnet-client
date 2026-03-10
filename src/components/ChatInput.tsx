@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import EmojiPicker, { type EmojiClickData, Theme } from 'emoji-picker-react'
 
 interface Props {
@@ -7,7 +7,11 @@ interface Props {
   onSend: (text: string) => void
 }
 
-export default function ChatInput({ connected, users, onSend }: Props) {
+export interface ChatInputHandle {
+  setDraft: (text: string) => void
+}
+
+const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connected, users, onSend }, ref) {
   const [input, setInput] = useState('')
   const [showPicker, setShowPicker] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
@@ -19,6 +23,18 @@ export default function ChatInput({ connected, users, onSend }: Props) {
     beforePrefix: string  // input text before the partial word
     afterCursor: string   // input text after the cursor at first Tab
   } | null>(null)
+
+  useImperativeHandle(ref, () => ({
+    setDraft(text: string) {
+      setInput(text)
+      tabStateRef.current = null
+      requestAnimationFrame(() => {
+        inputRef.current?.focus()
+        const len = text.length
+        inputRef.current?.setSelectionRange(len, len)
+      })
+    },
+  }))
 
   useEffect(() => {
     if (!showPicker) return
@@ -119,4 +135,6 @@ export default function ChatInput({ connected, users, onSend }: Props) {
       </form>
     </div>
   )
-}
+})
+
+export default ChatInput

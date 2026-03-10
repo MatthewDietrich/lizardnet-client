@@ -34,9 +34,34 @@ export function useIrcClient() {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const reconnectDelayRef = useRef(2000)
   const focusedRef = useRef(document.hasFocus())
+  const activePmPeerRef = useRef<string | null>(null)
+
+  function setActivePmPeer(peer: string | null) {
+    activePmPeerRef.current = peer
+    if (peer && focusedRef.current) {
+      setPmUnread(prev => {
+        if (!prev.get(peer)) return prev
+        const next = new Map(prev)
+        next.delete(peer)
+        return next
+      })
+    }
+  }
 
   useEffect(() => {
-    function onFocus() { focusedRef.current = true; setUnreadCount(0) }
+    function onFocus() {
+      focusedRef.current = true
+      setUnreadCount(0)
+      const peer = activePmPeerRef.current
+      if (peer) {
+        setPmUnread(prev => {
+          if (!prev.get(peer)) return prev
+          const next = new Map(prev)
+          next.delete(peer)
+          return next
+        })
+      }
+    }
     function onBlur() { focusedRef.current = false }
     window.addEventListener('focus', onFocus)
     window.addEventListener('blur', onBlur)
@@ -63,7 +88,7 @@ export function useIrcClient() {
       next.set(peer, [...(next.get(peer) ?? []), msg])
       return next
     })
-    if (isIncoming) {
+    if (isIncoming && !(focusedRef.current && activePmPeerRef.current === peer)) {
       notificationAudio.currentTime = 0
       notificationAudio.play().catch(() => {})
       if (!focusedRef.current) setUnreadCount(n => n + 1)
@@ -464,5 +489,5 @@ export function useIrcClient() {
     clientRef.current?.raw('AWAY')
   }
 
-  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack, clearPmUnread, closePmConversation }
+  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack, clearPmUnread, closePmConversation, setActivePmPeer }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import lizardIcon from './assets/lizard_icon.png'
 import { useIrcClient } from './hooks/useIrcClient'
 import ConnectModal from './components/ConnectModal'
@@ -7,12 +7,12 @@ import UserMenu from './components/UserMenu'
 import TopicBar from './components/TopicBar'
 import MessageList from './components/MessageList'
 import UserList from './components/UserList'
-import ChatInput from './components/ChatInput'
+import ChatInput, { type ChatInputHandle } from './components/ChatInput'
 import ChangeNickPopup from './components/ChangeNickPopup'
 import PmTabs from './components/PmTabs'
 
 export default function App() {
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack, clearPmUnread, closePmConversation } = useIrcClient()
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack, clearPmUnread, closePmConversation, setActivePmPeer } = useIrcClient()
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -24,6 +24,11 @@ export default function App() {
   const [showAdminConsole, setShowAdminConsole] = useState(false)
   const [showNickPopup, setShowNickPopup] = useState(false)
   const [activeTab, setActiveTab] = useState('#chat')
+  const chatInputRef = useRef<ChatInputHandle>(null)
+
+  useEffect(() => {
+    setActivePmPeer(activeTab !== '#chat' ? activeTab : null)
+  }, [activeTab])
 
   function switchTab(tab: string) {
     setActiveTab(tab)
@@ -147,7 +152,7 @@ export default function App() {
       />
 
       <div className={pmPeers.length > 0 ? 'mt-2' : 'mt-3'}>
-        <ChatInput connected={connected} users={users} onSend={handleSend} />
+        <ChatInput ref={chatInputRef} connected={connected} users={users} onSend={handleSend} />
       </div>
 
       {menuUser && (
@@ -158,6 +163,7 @@ export default function App() {
           isTargetOp={ops.includes(menuUser)}
           position={menuPos}
           onWhois={() => whois(menuUser)}
+          onWhisper={() => chatInputRef.current?.setDraft(`/msg ${menuUser} `)}
           onOp={() => op(menuUser)}
           onDeop={() => deop(menuUser)}
           onKick={() => kick(menuUser)}
