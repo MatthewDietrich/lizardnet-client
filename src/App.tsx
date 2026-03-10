@@ -9,9 +9,10 @@ import MessageList from './components/MessageList'
 import UserList from './components/UserList'
 import ChatInput from './components/ChatInput'
 import ChangeNickPopup from './components/ChangeNickPopup'
+import PmTabs from './components/PmTabs'
 
 export default function App() {
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack } = useIrcClient()
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack, clearPmUnread, closePmConversation } = useIrcClient()
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -22,6 +23,17 @@ export default function App() {
   const [showConnectModal, setShowConnectModal] = useState(true)
   const [showAdminConsole, setShowAdminConsole] = useState(false)
   const [showNickPopup, setShowNickPopup] = useState(false)
+  const [activeTab, setActiveTab] = useState('#chat')
+
+  function switchTab(tab: string) {
+    setActiveTab(tab)
+    if (tab !== '#chat') clearPmUnread(tab)
+  }
+
+  function closeTab(peer: string) {
+    closePmConversation(peer)
+    if (activeTab === peer) setActiveTab('#chat')
+  }
 
   const HELP_LINES = [
     '/me <action>                 — send an action message',
@@ -48,7 +60,9 @@ export default function App() {
       const rest = text.slice(5)
       const spaceIdx = rest.indexOf(' ')
       if (spaceIdx !== -1) {
-        sendPrivMsg(rest.slice(0, spaceIdx), rest.slice(spaceIdx + 1))
+        const target = rest.slice(0, spaceIdx)
+        sendPrivMsg(target, rest.slice(spaceIdx + 1))
+        switchTab(target)
         return
       }
     }
@@ -82,8 +96,15 @@ export default function App() {
       for (const line of HELP_LINES) addMessage('*', line, 'event')
       return
     }
+    if (activeTab !== '#chat') {
+      sendPrivMsg(activeTab, text)
+      return
+    }
     sendMessage(text)
   }
+
+  const activeMessages = activeTab === '#chat' ? messages : (pmConversations.get(activeTab) ?? [])
+  const pmPeers = [...pmConversations.keys()]
 
   return (
     <div className="d-flex flex-column px-4 py-3" style={{ height: '100dvh' }}>
@@ -106,8 +127,8 @@ export default function App() {
 
       {connected && <TopicBar topic={topic} isOper={isOper} onChangeTopic={changeTopic} />}
 
-      <div className="d-flex gap-3 mb-3 flex-grow-1" style={{ minHeight: 0 }}>
-        <MessageList messages={messages} nick={nick} />
+      <div className="d-flex gap-3 flex-grow-1" style={{ minHeight: 0 }}>
+        <MessageList messages={activeMessages} nick={nick} />
         <UserList
           users={users}
           ops={ops}
@@ -117,7 +138,17 @@ export default function App() {
         />
       </div>
 
-      <ChatInput connected={connected} users={users} onSend={handleSend} />
+      <PmTabs
+        activeTab={activeTab}
+        pmPeers={pmPeers}
+        pmUnread={pmUnread}
+        onSwitch={switchTab}
+        onClose={closeTab}
+      />
+
+      <div className={pmPeers.length > 0 ? 'mt-2' : 'mt-3'}>
+        <ChatInput connected={connected} users={users} onSend={handleSend} />
+      </div>
 
       {menuUser && (
         <UserMenu

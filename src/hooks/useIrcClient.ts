@@ -23,6 +23,8 @@ export function useIrcClient() {
   const [topic, setTopicState] = useState('')
   const [unreadCount, setUnreadCount] = useState(0)
   const [awayUsers, setAwayUsers] = useState<Set<string>>(new Set())
+  const [pmConversations, setPmConversations] = useState<Map<string, Message[]>>(new Map())
+  const [pmUnread, setPmUnread] = useState<Map<string, number>>(new Map())
 
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
   const rawOutputRef = useRef(false)
@@ -46,12 +48,31 @@ export function useIrcClient() {
       !!nickRef.current &&
       from !== nickRef.current &&
       new RegExp(`\\b${nickRef.current}\\b`, 'i').test(text)
-    if (kind === 'pm' || isMention) {
+    if (isMention) {
       notificationAudio.currentTime = 0
       notificationAudio.play().catch(() => {})
       if (!focusedRef.current) setUnreadCount(n => n + 1)
     }
     setMessages(prev => [...prev, { from, text, ts: new Date(), kind }])
+  }
+
+  function addPmMessage(peer: string, from: string, text: string, isIncoming: boolean) {
+    const msg: Message = { from, text, ts: new Date(), kind: 'chat' }
+    setPmConversations(prev => {
+      const next = new Map(prev)
+      next.set(peer, [...(next.get(peer) ?? []), msg])
+      return next
+    })
+    if (isIncoming) {
+      notificationAudio.currentTime = 0
+      notificationAudio.play().catch(() => {})
+      if (!focusedRef.current) setUnreadCount(n => n + 1)
+      setPmUnread(prev => {
+        const next = new Map(prev)
+        next.set(peer, (next.get(peer) ?? 0) + 1)
+        return next
+      })
+    }
   }
 
   function attachListeners(client: InstanceType<typeof IRC.Client>, chosenNick: string) {
@@ -65,7 +86,7 @@ export function useIrcClient() {
       if (target?.toLowerCase() === '#chat') {
         addMessage(who, message)
       } else {
-        addMessage(who, message, 'pm')
+        addPmMessage(who, who, message, true)
       }
     })
 
@@ -357,7 +378,30 @@ export function useIrcClient() {
   function sendPrivMsg(target: string, text: string) {
     if (!text.trim() || !clientRef.current) return
     clientRef.current.say(target, text)
-    addMessage('*', `-> ${target}: ${text}`, 'event')
+    addPmMessage(target, nickRef.current, text, false)
+  }
+
+  function clearPmUnread(peer: string) {
+    setPmUnread(prev => {
+      if (!prev.get(peer)) return prev
+      const next = new Map(prev)
+      next.delete(peer)
+      return next
+    })
+  }
+
+  function closePmConversation(peer: string) {
+    setPmConversations(prev => {
+      const next = new Map(prev)
+      next.delete(peer)
+      return next
+    })
+    setPmUnread(prev => {
+      if (!prev.has(peer)) return prev
+      const next = new Map(prev)
+      next.delete(peer)
+      return next
+    })
   }
 
   function sendRaw(command: string) {
@@ -420,5 +464,5 @@ export function useIrcClient() {
     clientRef.current?.raw('AWAY')
   }
 
-  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack }
+  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack, clearPmUnread, closePmConversation }
 }
