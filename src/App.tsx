@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import lizardIcon from './assets/lizard_icon.png'
 import { useIrcClient } from './hooks/useIrcClient'
 import ConnectModal from './components/ConnectModal'
@@ -11,7 +11,11 @@ import ChatInput from './components/ChatInput'
 import ChangeNickPopup from './components/ChangeNickPopup'
 
 export default function App() {
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction } = useIrcClient()
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction } = useIrcClient()
+
+  useEffect(() => {
+    document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
+  }, [unreadCount])
 
   const [menuUser, setMenuUser] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
