@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 const NICK_RE = /^[a-zA-Z\[\]\\`^{|}_][a-zA-Z0-9\[\]\\`^{|}_\-]*$/
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function nickError(nick: string): string | null {
   if (!nick) return null
@@ -25,6 +26,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
 
   const connectNickError = nickError(nickInput.trim())
   const registerNickError = nickError(regNick.trim())
+  const emailError = regEmail.trim() && !EMAIL_RE.test(regEmail.trim()) ? 'Invalid email address' : null
 
   function handleConnect(e: { preventDefault(): void }) {
     e.preventDefault()
@@ -39,7 +41,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
     const nick = regNick.trim()
     const password = regPassword.trim()
     const email = regEmail.trim()
-    if (!nick || registerNickError || !password || !email) return
+    if (!nick || registerNickError || !password || !email || emailError) return
     localStorage.setItem('lastNick', nick)
     onRegister(nick, password, email)
   }
@@ -124,12 +126,13 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
                     onChange={e => setRegPassword(e.target.value)}
                   />
                   <input
-                    className="form-control"
+                    className="form-control mb-1"
                     type="email"
                     placeholder="Email"
                     value={regEmail}
                     onChange={e => setRegEmail(e.target.value)}
                   />
+                  {emailError && <div style={{ fontSize: 12, color: 'var(--c-tertiary)', marginBottom: 4 }}>{emailError}</div>}
                 </form>
               )}
             </div>
@@ -145,7 +148,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
                   form="register-form"
                   type="submit"
                   className="btn btn-primary"
-                  disabled={!regNick.trim() || !!registerNickError || !regPassword.trim() || !regEmail.trim()}
+                  disabled={!regNick.trim() || !!registerNickError || !regPassword.trim() || !regEmail.trim() || !!emailError}
                 >
                   Register & connect
                 </button>
