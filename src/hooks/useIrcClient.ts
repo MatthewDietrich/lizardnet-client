@@ -97,10 +97,10 @@ export function useIrcClient() {
         }
         reconnectDelayRef.current = 2000
         connectCore(creds.nick, creds.password, true)
-      } else if (status === 'connected' && wasHiddenMs > 20000) {
+      } else if (status === 'connected' && wasHiddenMs > 120000) {
         // Connection likely dead after long background; force reconnect
         if (clientRef.current) {
-          manualDisconnectRef.current = false
+          manualDisconnectRef.current = true
           clientRef.current.quit()
           clientRef.current = null
         }
