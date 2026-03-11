@@ -36,7 +36,6 @@ export function useIrcClient() {
   const reconnectDelayRef = useRef(2000)
   const focusedRef = useRef(document.hasFocus())
   const activePmPeerRef = useRef<string | null>(null)
-  const hiddenAtRef = useRef<number | null>(null)
   const connStatusRef = useRef<ConnStatus>('disconnected')
   const activeBatchesRef = useRef<Map<string, string>>(new Map())
 
@@ -78,16 +77,11 @@ export function useIrcClient() {
 
   useEffect(() => {
     function onVisibilityChange() {
-      if (document.hidden) {
-        hiddenAtRef.current = Date.now()
-        return
-      }
+      if (document.hidden) return
       // Page became visible — check if we need to reconnect
       const status = connStatusRef.current
       const creds = credentialsRef.current
       if (!creds) return
-
-      const wasHiddenMs = hiddenAtRef.current ? Date.now() - hiddenAtRef.current : 0
 
       if (status === 'reconnecting') {
         // Cancel backoff timer and reconnect immediately
@@ -96,14 +90,6 @@ export function useIrcClient() {
           reconnectTimerRef.current = null
         }
         reconnectDelayRef.current = 2000
-        connectCore(creds.nick, creds.password, true)
-      } else if (status === 'connected' && wasHiddenMs > 120000) {
-        // Connection likely dead after long background; force reconnect
-        if (clientRef.current) {
-          manualDisconnectRef.current = true
-          clientRef.current.quit()
-          clientRef.current = null
-        }
         connectCore(creds.nick, creds.password, true)
       }
     }
