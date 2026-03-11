@@ -46,6 +46,7 @@ export default function App() {
   }
 
   const HELP_LINES = [
+    '/say <message>               — send message literally (useful for text starting with /)',
     '/me <action>                 — send an action message',
     '/nick <nick>                 — change your nickname',
     '/msg <nick> <message>        — send a private message',
@@ -58,6 +59,10 @@ export default function App() {
   ]
 
   function handleSend(text: string) {
+    if (text.startsWith('/say ')) {
+      const msg = text.slice(5)
+      if (msg) { activeTab === '#chat' ? sendMessage(msg) : sendPrivMsg(activeTab, msg); return }
+    }
     if (text.startsWith('/me ')) {
       const action = text.slice(4).trim()
       if (action) { sendAction(action, activeTab !== '#chat' ? activeTab : '#chat'); return }
