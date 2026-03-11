@@ -7,6 +7,7 @@ interface Props {
   isTargetOp: boolean
   position: { x: number; y: number }
   onWhois: () => void
+  onMention: () => void
   onWhisper: () => void
   onKick: () => void
   onBan: () => void
@@ -15,7 +16,7 @@ interface Props {
   onClose: () => void
 }
 
-export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, onWhois, onWhisper, onKick, onBan, onOp, onDeop, onClose }: Props) {
+export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, onWhois, onMention, onWhisper, onKick, onBan, onOp, onDeop, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -48,7 +49,14 @@ export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, o
         >
           Info
         </button>
-        {!isSelf && (
+        {!isSelf && (<>
+          <button
+            className="list-group-item list-group-item-action py-1 px-2"
+            style={{ fontSize: 13 }}
+            onClick={() => action(onMention)}
+          >
+            Mention
+          </button>
           <button
             className="list-group-item list-group-item-action py-1 px-2"
             style={{ fontSize: 13 }}
@@ -56,7 +64,7 @@ export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, o
           >
             Whisper
           </button>
-        )}
+        </>)}
         {isOper && !isSelf && <>
           <button
             className="list-group-item list-group-item-action py-1 px-2"

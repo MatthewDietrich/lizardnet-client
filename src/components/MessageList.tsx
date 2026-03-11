@@ -5,6 +5,7 @@ import type { Message } from '../types'
 interface Props {
   messages: Message[]
   nick: string
+  onNickClick?: (nick: string, pos: { x: number; y: number }) => void
 }
 
 const EMOJI_ONLY_RE = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u200d\ufe0f\u20e3]+$/u
@@ -26,10 +27,13 @@ function highlight(text: string, term: string) {
   )
 }
 
-const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm }: { m: Message; mentioned: boolean; searchTerm: string }) {
+const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickClick }: { m: Message; mentioned: boolean; searchTerm: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void }) {
   const ts = <span style={{ fontSize: 11, color: 'var(--c-disabled-fg)' }}>{m.ts.toLocaleTimeString()}</span>
   const text = searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text)
-  const from = searchTerm ? highlight(m.from, searchTerm) : m.from
+  const fromText = searchTerm ? highlight(m.from, searchTerm) : m.from
+  const from = m.from && m.from !== '*' && m.kind !== 'event' && onNickClick
+    ? <strong style={{ cursor: 'pointer' }} onClick={e => onNickClick(m.from, { x: e.clientX, y: e.clientY })}>{fromText}</strong>
+    : <strong>{fromText}</strong>
   if (m.kind === 'event') return (
     <div className="fst-italic" style={{ fontSize: 12, color: 'var(--c-tertiary)' }}>
       {ts}{' '}{searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text)}
@@ -37,24 +41,24 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm }: { m: M
   )
   if (m.kind === 'action') return (
     <div className="fst-italic" style={mentioned ? mentionStyle : undefined}>
-      {ts}{' '}<strong>{from}</strong> {text}
+      {ts}{' '}{from} {text}
     </div>
   )
   if (m.kind === 'pm') return (
     <div style={{ color: 'var(--c-quaternary)' }}>
-      {ts}{' '}<span style={{ opacity: 0.6 }}>[PM]</span> <strong>{from}</strong>: {text}
+      {ts}{' '}<span style={{ opacity: 0.6 }}>[PM]</span> {from}: {text}
     </div>
   )
   const emojiOnly = EMOJI_ONLY_RE.test(m.text.trim())
   return (
     <div style={mentioned ? mentionStyle : undefined}>
-      {ts}{' '}<strong>{from}</strong>:{' '}
+      {ts}{' '}{from}:{' '}
       <span style={emojiOnly ? { fontSize: 36, lineHeight: 1.1 } : undefined}>{text}</span>
     </div>
   )
 })
 
-export default function MessageList({ messages, nick }: Props) {
+export default function MessageList({ messages, nick, onNickClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -149,7 +153,7 @@ export default function MessageList({ messages, nick }: Props) {
         {filteredMessages.map((m, i) => {
           const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
             m.from !== nick && !!mentionRegex?.test(m.text)
-          return <MessageRow key={i} m={m} mentioned={mentioned} searchTerm={searchTerm} />
+          return <MessageRow key={i} m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} />
         })}
         <div ref={endRef} />
       </div>

@@ -153,7 +153,7 @@ export default function App() {
       {connected && <TopicBar topic={topic} isOper={isOper} onChangeTopic={changeTopic} />}
 
       <div className="d-flex gap-3 flex-grow-1" style={{ minHeight: 0 }}>
-        <MessageList messages={activeMessages} nick={nick} />
+        <MessageList messages={activeMessages} nick={nick} onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }} />
         <UserList
           users={users}
           ops={ops}
@@ -183,6 +183,7 @@ export default function App() {
           isTargetOp={ops.includes(menuUser)}
           position={menuPos}
           onWhois={() => whois(menuUser)}
+          onMention={() => chatInputRef.current?.mention(menuUser)}
           onWhisper={() => chatInputRef.current?.setDraft(`/msg ${menuUser} `)}
           onOp={() => op(menuUser)}
           onDeop={() => deop(menuUser)}
