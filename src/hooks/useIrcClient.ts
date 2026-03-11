@@ -36,6 +36,8 @@ export function useIrcClient() {
   const reconnectDelayRef = useRef(2000)
   const focusedRef = useRef(document.hasFocus())
   const activePmPeerRef = useRef<string | null>(null)
+  const hiddenAtRef = useRef<number | null>(null)
+  const connStatusRef = useRef<ConnStatus>('disconnected')
 
   function setActivePmPeer(peer: string | null) {
     activePmPeerRef.current = peer
@@ -67,6 +69,45 @@ export function useIrcClient() {
     window.addEventListener('focus', onFocus)
     window.addEventListener('blur', onBlur)
     return () => { window.removeEventListener('focus', onFocus); window.removeEventListener('blur', onBlur) }
+  }, [])
+
+  useEffect(() => {
+    connStatusRef.current = connStatus
+  }, [connStatus])
+
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (document.hidden) {
+        hiddenAtRef.current = Date.now()
+        return
+      }
+      // Page became visible — check if we need to reconnect
+      const status = connStatusRef.current
+      const creds = credentialsRef.current
+      if (!creds) return
+
+      const wasHiddenMs = hiddenAtRef.current ? Date.now() - hiddenAtRef.current : 0
+
+      if (status === 'reconnecting') {
+        // Cancel backoff timer and reconnect immediately
+        if (reconnectTimerRef.current) {
+          clearTimeout(reconnectTimerRef.current)
+          reconnectTimerRef.current = null
+        }
+        reconnectDelayRef.current = 2000
+        connectCore(creds.nick, creds.password, true)
+      } else if (status === 'connected' && wasHiddenMs > 20000) {
+        // Connection likely dead after long background; force reconnect
+        if (clientRef.current) {
+          manualDisconnectRef.current = false
+          clientRef.current.quit()
+          clientRef.current = null
+        }
+        connectCore(creds.nick, creds.password, true)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [])
 
   function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat') {
