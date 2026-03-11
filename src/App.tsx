@@ -111,6 +111,10 @@ export default function App() {
       for (const line of HELP_LINES) addMessage('*', line, 'event')
       return
     }
+    if (text.startsWith('/')) {
+      addMessage('*', 'Invalid command. Type /help for a list of commands.', 'event')
+      return
+    }
     if (activeTab !== '#chat') {
       sendPrivMsg(activeTab, text)
       return
