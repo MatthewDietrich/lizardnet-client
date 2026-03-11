@@ -101,17 +101,14 @@ export function useIrcClient() {
   }
 
   function attachListeners(client: InstanceType<typeof IRC.Client>, chosenNick: string) {
-    client.on('message', ({ nick: who, target, message }) => {
+    client.on('message', (event: unknown) => {
+      const { nick: who, target, message, type } = event as { nick: string; target: string; message: string; type: string }
       if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
-      const actionMatch = message.match(/^\x01ACTION (.*)\x01$/)
-      if (actionMatch) {
-        addMessage(who, actionMatch[1], 'action')
-        return
-      }
+      const isAction = type === 'action'
       if (target?.toLowerCase() === '#chat') {
-        addMessage(who, message)
+        addMessage(who, message, isAction ? 'action' : 'chat')
       } else {
-        addPmMessage(who, who, message, true)
+        addPmMessage(who, who, message, true, isAction ? 'action' : 'chat')
       }
     })
 
