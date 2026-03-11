@@ -38,6 +38,7 @@ export function useIrcClient() {
   const activePmPeerRef = useRef<string | null>(null)
   const hiddenAtRef = useRef<number | null>(null)
   const connStatusRef = useRef<ConnStatus>('disconnected')
+  const activeBatchesRef = useRef<Map<string, string>>(new Map())
 
   function setActivePmPeer(peer: string | null) {
     activePmPeerRef.current = peer
@@ -110,8 +111,8 @@ export function useIrcClient() {
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [])
 
-  function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat') {
-    const isMention = (kind === 'chat' || kind === 'action') &&
+  function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat', ts?: Date, isHistory = false) {
+    const isMention = !isHistory && (kind === 'chat' || kind === 'action') &&
       !!nickRef.current &&
       from !== nickRef.current &&
       new RegExp(`\\b${nickRef.current}\\b`, 'i').test(text)
@@ -120,7 +121,7 @@ export function useIrcClient() {
       notificationAudio.play().catch(() => {})
       if (!focusedRef.current) setUnreadCount(n => n + 1)
     }
-    setMessages(prev => [...prev, { from, text, ts: new Date(), kind }])
+    setMessages(prev => [...prev, { from, text, ts: ts ?? new Date(), kind }])
   }
 
   function resolveKey(map: Map<string, unknown>, peer: string): string {
@@ -154,11 +155,13 @@ export function useIrcClient() {
 
   function attachListeners(client: InstanceType<typeof IRC.Client>, chosenNick: string) {
     client.on('message', (event: unknown) => {
-      const { nick: who, target, message, type } = event as { nick: string; target: string; message: string; type: string }
+      const { nick: who, target, message, type, tags } = event as { nick: string; target: string; message: string; type: string; tags?: Record<string, string> }
       if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
       const isAction = type === 'action'
+      const serverTime = tags?.['server-time'] ? new Date(tags['server-time']) : undefined
+      const isHistory = !!(tags?.batch && activeBatchesRef.current.get(tags.batch) === 'chathistory')
       if (target?.toLowerCase() === '#chat') {
-        addMessage(who, message, isAction ? 'action' : 'chat')
+        addMessage(who, message, isAction ? 'action' : 'chat', serverTime, isHistory)
       } else {
         addPmMessage(who, who, message, true, isAction ? 'action' : 'chat')
       }
@@ -168,8 +171,9 @@ export function useIrcClient() {
       const e = event as { line?: string; from_server?: boolean }
       if (!e.from_server || !e.line) return
 
-      // Parse `:prefix cmd params...` or `cmd params...`
+      // Parse `@tags :prefix cmd params...` or `:prefix cmd params...`
       let rest = e.line
+      if (rest.startsWith('@')) rest = rest.slice(rest.indexOf(' ') + 1)
       if (rest.startsWith(':')) rest = rest.slice(rest.indexOf(' ') + 1)
       const spaceIdx = rest.indexOf(' ')
       const cmd = spaceIdx === -1 ? rest : rest.slice(0, spaceIdx)
@@ -199,6 +203,18 @@ export function useIrcClient() {
       if (cmd === '381') { setIsOper(true); client.raw('MODE #chat +b') }
       if (cmd === '367' && p[1]?.toLowerCase() === '#chat' && p[2]) {
         setBannedUsers(prev => prev.includes(p[2]) ? prev : [...prev, p[2]])
+      }
+      if (cmd === 'BATCH') {
+        const ref = p[0]
+        if (ref?.startsWith('+')) {
+          activeBatchesRef.current.set(ref.slice(1), p[1] ?? '')
+        } else if (ref?.startsWith('-')) {
+          const type = activeBatchesRef.current.get(ref.slice(1))
+          activeBatchesRef.current.delete(ref.slice(1))
+          if (type === 'chathistory') {
+            addMessage('*', '─── history above ───', 'event')
+          }
+        }
       }
       if (rawOutputRef.current && /^\d+$/.test(cmd)) {
         const text = p[p.length - 1]
