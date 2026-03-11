@@ -25,6 +25,7 @@ export function useIrcClient() {
   const [awayUsers, setAwayUsers] = useState<Set<string>>(new Set())
   const [pmConversations, setPmConversations] = useState<Map<string, Message[]>>(new Map())
   const [pmUnread, setPmUnread] = useState<Map<string, number>>(new Map())
+  const [pmPeerRename, setPmPeerRename] = useState<{ from: string; to: string } | null>(null)
 
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
   const rawOutputRef = useRef(false)
@@ -246,13 +247,31 @@ export function useIrcClient() {
 
     client.on('nick', (event: unknown) => {
       const e = event as { nick: string; new_nick: string }
-      if (e.nick === chosenNick) { setNick(e.new_nick); nickRef.current = e.new_nick }
+      if (e.nick === nickRef.current) { setNick(e.new_nick); nickRef.current = e.new_nick }
       setUsers(prev => prev.map(u => u === e.nick ? e.new_nick : u).sort((a, b) => a.localeCompare(b)))
       setOps(prev => prev.map(u => u === e.nick ? e.new_nick : u))
       setAwayUsers(prev => {
         if (!prev.has(e.nick)) return prev
         const s = new Set(prev); s.delete(e.nick); s.add(e.new_nick); return s
       })
+      setPmConversations(prev => {
+        if (!prev.has(e.nick)) return prev
+        const next = new Map(prev)
+        next.set(e.new_nick, next.get(e.nick)!)
+        next.delete(e.nick)
+        return next
+      })
+      setPmUnread(prev => {
+        if (!prev.has(e.nick)) return prev
+        const next = new Map(prev)
+        next.set(e.new_nick, next.get(e.nick)!)
+        next.delete(e.nick)
+        return next
+      })
+      if (activePmPeerRef.current === e.nick) {
+        activePmPeerRef.current = e.new_nick
+        setPmPeerRename({ from: e.nick, to: e.new_nick })
+      }
       addMessage('*', `${e.nick} is now known as ${e.new_nick}`, 'event')
     })
 
@@ -490,5 +509,5 @@ export function useIrcClient() {
     clientRef.current?.raw('AWAY')
   }
 
-  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack, clearPmUnread, closePmConversation, setActivePmPeer }
+  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack, clearPmUnread, closePmConversation, setActivePmPeer }
 }

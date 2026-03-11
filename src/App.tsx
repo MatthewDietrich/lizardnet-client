@@ -12,7 +12,7 @@ import ChangeNickPopup from './components/ChangeNickPopup'
 import PmTabs from './components/PmTabs'
 
 export default function App() {
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack, clearPmUnread, closePmConversation, setActivePmPeer } = useIrcClient()
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack, clearPmUnread, closePmConversation, setActivePmPeer } = useIrcClient()
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -29,6 +29,11 @@ export default function App() {
   useEffect(() => {
     setActivePmPeer(activeTab !== '#chat' ? activeTab : null)
   }, [activeTab])
+
+  useEffect(() => {
+    if (!pmPeerRename) return
+    setActiveTab(prev => prev === pmPeerRename.from ? pmPeerRename.to : prev)
+  }, [pmPeerRename])
 
   function switchTab(tab: string) {
     setActiveTab(tab)
