@@ -131,7 +131,9 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
         >
           😊
         </button>
-        <button type="submit" className="btn btn-primary" disabled={!connected}>Send</button>
+        <button type="submit" className="btn btn-primary d-flex align-items-center gap-1" disabled={!connected}>
+          <span className="material-icons" style={{ fontSize: 18 }}>send</span>
+        </button>
       </form>
     </div>
   )

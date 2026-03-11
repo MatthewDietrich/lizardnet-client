@@ -150,6 +150,15 @@ body {
 .border   { border-color: var(--c-border) !important; }
 .text-muted { color: var(--c-secondary) !important; }
 
+/* ── Material Icons ─────────────────────────────────────── */
+
+.material-icons {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 20px;
+  vertical-align: middle;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.3; }

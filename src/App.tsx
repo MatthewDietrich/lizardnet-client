@@ -121,12 +121,18 @@ export default function App() {
           background: connStatus === 'connected' ? 'var(--c-primary)' : connStatus === 'disconnected' ? 'var(--c-tertiary)' : 'var(--c-quaternary)',
           animation: connStatus === 'connecting' || connStatus === 'reconnecting' ? 'pulse 1s ease-in-out infinite' : 'none',
         }} />
-        {(isOper || ops.includes(nick)) && <button className="btn btn-sm btn-outline-warning" onClick={() => setShowAdminConsole(true)}>Moderator Console</button>}
+        {(isOper || ops.includes(nick)) && (
+          <button className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1" onClick={() => setShowAdminConsole(true)}>
+            <span className="material-icons" style={{ fontSize: 16 }}>admin_panel_settings</span>
+            Moderator Console
+          </button>
+        )}
         <button
-          className="btn btn-sm btn-outline-secondary ms-auto"
+          className="btn btn-sm btn-outline-secondary ms-auto d-flex align-items-center gap-1"
           onClick={() => connected ? setShowNickPopup(true) : setShowConnectModal(true)}
         >
-          {nick ? <>Nickname: <strong>{nick}</strong></> : 'Set nickname'}
+          <span className="material-icons" style={{ fontSize: 16 }}>account_circle</span>
+          {nick ? <><strong>{nick}</strong></> : 'Set nickname'}
         </button>
       </div>
 
