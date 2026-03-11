@@ -82,20 +82,30 @@ export function useIrcClient() {
     setMessages(prev => [...prev, { from, text, ts: new Date(), kind }])
   }
 
+  function resolveKey(map: Map<string, unknown>, peer: string): string {
+    const lower = peer.toLowerCase()
+    for (const key of map.keys()) {
+      if (key.toLowerCase() === lower) return key
+    }
+    return peer
+  }
+
   function addPmMessage(peer: string, from: string, text: string, isIncoming: boolean, kind: Message['kind'] = 'chat') {
     const msg: Message = { from, text, ts: new Date(), kind }
     setPmConversations(prev => {
+      const key = resolveKey(prev, peer)
       const next = new Map(prev)
-      next.set(peer, [...(next.get(peer) ?? []), msg])
+      next.set(key, [...(next.get(key) ?? []), msg])
       return next
     })
-    if (isIncoming && !(focusedRef.current && activePmPeerRef.current === peer)) {
+    if (isIncoming && !(focusedRef.current && activePmPeerRef.current?.toLowerCase() === peer.toLowerCase())) {
       notificationAudio.currentTime = 0
       notificationAudio.play().catch(() => {})
       if (!focusedRef.current) setUnreadCount(n => n + 1)
       setPmUnread(prev => {
+        const key = resolveKey(prev, peer)
         const next = new Map(prev)
-        next.set(peer, (next.get(peer) ?? 0) + 1)
+        next.set(key, (next.get(key) ?? 0) + 1)
         return next
       })
     }
