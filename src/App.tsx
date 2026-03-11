@@ -55,7 +55,7 @@ export default function App() {
   function handleSend(text: string) {
     if (text.startsWith('/me ')) {
       const action = text.slice(4).trim()
-      if (action) { sendAction(action); return }
+      if (action) { sendAction(action, activeTab !== '#chat' ? activeTab : '#chat'); return }
     }
     if (text.startsWith('/nick ')) {
       const newNick = text.slice(6).trim()

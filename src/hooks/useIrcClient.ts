@@ -81,8 +81,8 @@ export function useIrcClient() {
     setMessages(prev => [...prev, { from, text, ts: new Date(), kind }])
   }
 
-  function addPmMessage(peer: string, from: string, text: string, isIncoming: boolean) {
-    const msg: Message = { from, text, ts: new Date(), kind: 'chat' }
+  function addPmMessage(peer: string, from: string, text: string, isIncoming: boolean, kind: Message['kind'] = 'chat') {
+    const msg: Message = { from, text, ts: new Date(), kind }
     setPmConversations(prev => {
       const next = new Map(prev)
       next.set(peer, [...(next.get(peer) ?? []), msg])
@@ -475,10 +475,14 @@ export function useIrcClient() {
     clientRef.current?.say('NickServ', text)
   }
 
-  function sendAction(text: string) {
+  function sendAction(text: string, target = '#chat') {
     if (!text.trim() || !clientRef.current) return
-    clientRef.current.say('#chat', `\x01ACTION ${text}\x01`)
-    addMessage(nick, text, 'action')
+    clientRef.current.say(target, `\x01ACTION ${text}\x01`)
+    if (target === '#chat') {
+      addMessage(nickRef.current, text, 'action')
+    } else {
+      addPmMessage(target, nickRef.current, text, false, 'action')
+    }
   }
 
   function setAway(message: string) {
