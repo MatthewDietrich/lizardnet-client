@@ -4,6 +4,7 @@ import EmojiPicker, { type EmojiClickData, Theme } from 'emoji-picker-react'
 interface Props {
   connected: boolean
   users: string[]
+  commands: string[]
   onSend: (text: string) => void
 }
 
@@ -11,7 +12,7 @@ export interface ChatInputHandle {
   setDraft: (text: string) => void
 }
 
-const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connected, users, onSend }, ref) {
+const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connected, users, commands, onSend }, ref) {
   const [input, setInput] = useState('')
   const [showPicker, setShowPicker] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
@@ -72,13 +73,16 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
       const partial = wordMatch?.[1] ?? ''
       if (!partial) return
 
-      const matches = users.filter(u => u.toLowerCase().startsWith(partial.toLowerCase()))
+      const beforePrefix = before.slice(0, before.length - partial.length)
+      const isCommand = partial.startsWith('/') && beforePrefix.trim() === ''
+      const pool = isCommand ? commands : users
+      const matches = pool.filter(u => u.toLowerCase().startsWith(partial.toLowerCase()))
       if (!matches.length) return
 
       state = {
         matches,
         idx: 0,
-        beforePrefix: before.slice(0, before.length - partial.length),
+        beforePrefix,
         afterCursor: input.slice(cursor),
       }
     } else {
@@ -89,7 +93,8 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
     tabStateRef.current = state
 
     const completed = state.matches[state.idx]
-    const suffix = state.beforePrefix.length === 0 ? ': ' : ' '
+    const isCommand = completed.startsWith('/')
+    const suffix = (!isCommand && state.beforePrefix.length === 0) ? ': ' : ' '
     const newBefore = state.beforePrefix + completed + suffix
     setInput(newBefore + state.afterCursor)
     requestAnimationFrame(() => {
