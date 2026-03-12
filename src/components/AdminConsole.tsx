@@ -1,22 +1,10 @@
-import { useState } from 'react'
-
 interface Props {
   onClose: () => void
-  onSendRaw: (command: string) => void
   bannedUsers: string[]
   onUnban: (mask: string) => void
 }
 
-export default function AdminConsole({ onClose, onSendRaw, bannedUsers, onUnban }: Props) {
-  const [input, setInput] = useState('')
-
-  function handleSubmit(e: { preventDefault(): void }) {
-    e.preventDefault()
-    if (!input.trim()) return
-    onSendRaw(input.trim())
-    setInput('')
-  }
-
+export default function AdminConsole({ onClose, bannedUsers, onUnban }: Props) {
   return (
     <>
       <div className="modal show d-block" tabIndex={-1} onClick={onClose}>
@@ -29,7 +17,7 @@ export default function AdminConsole({ onClose, onSendRaw, bannedUsers, onUnban 
             <div className="modal-body">
               <p className="small mb-2" style={{ color: 'var(--c-tertiary)' }}>Banned users</p>
               <div
-                className="border rounded p-2 mb-3 font-monospace"
+                className="border rounded p-2 font-monospace"
                 style={{ minHeight: 48, maxHeight: 160, overflowY: 'auto', fontSize: 12 }}
               >
                 {bannedUsers.length === 0
@@ -48,22 +36,6 @@ export default function AdminConsole({ onClose, onSendRaw, bannedUsers, onUnban 
                   ))
                 }
               </div>
-
-              <p className="small mb-2" style={{ color: 'var(--c-secondary)' }}>Raw command</p>
-              <form onSubmit={handleSubmit}>
-                <div className="input-group">
-                  <input
-                    className="form-control font-monospace"
-                    placeholder="e.g. KICK #chat user :reason"
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    autoFocus
-                  />
-                  <button type="submit" className="btn btn-warning" disabled={!input.trim()}>
-                    Send
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         </div>
