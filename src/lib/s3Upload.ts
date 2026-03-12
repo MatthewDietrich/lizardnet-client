@@ -5,9 +5,13 @@ const MAX_SIZE = 50 * 1024 * 1024
 export async function uploadToS3(file: File, onProgress?: (pct: number) => void): Promise<string> {
   if (file.size > MAX_SIZE) throw new Error('File too large (max 50MB)')
 
+  const token = import.meta.env.VITE_UPLOAD_TOKEN
   const res = await fetch(PRESIGN_ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
     body: JSON.stringify({ filename: file.name, contentType: file.type }),
   })
   if (!res.ok) throw new Error('Could not get upload URL')
