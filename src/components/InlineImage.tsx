@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export function InlineImage({ src }: { src: string }) {
   const [expanded, setExpanded] = useState(false)
+  const touchStartY = useRef(0)
 
   useEffect(() => {
     if (!expanded) return
@@ -26,11 +27,15 @@ export function InlineImage({ src }: { src: string }) {
       {expanded && (
         <div
           onClick={() => setExpanded(false)}
+          onTouchStart={e => { touchStartY.current = e.touches[0].clientY }}
+          onTouchEnd={e => { if (e.changedTouches[0].clientY - touchStartY.current > 60) setExpanded(false) }}
           style={{
             position: 'fixed', inset: 0, zIndex: 1050,
             background: 'rgba(0,0,0,0.85)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'zoom-out',
+            overscrollBehavior: 'none',
+            touchAction: 'pan-down',
           }}
         >
           <img
