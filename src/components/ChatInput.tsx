@@ -168,23 +168,23 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
         />
         <input
           ref={fileInputRef}
+          id="chat-file-upload"
           type="file"
           accept="image/*,video/*"
           style={{ display: 'none' }}
           onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }}
         />
-        <button
-          type="button"
-          className="btn btn-outline-secondary"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={!connected || uploadProgress !== null}
+        <label
+          htmlFor="chat-file-upload"
+          className={`btn btn-outline-secondary${!connected || uploadProgress !== null ? ' disabled' : ''}`}
           title={uploadProgress !== null ? `Uploading ${uploadProgress}%` : 'Upload image or video'}
-          style={{ fontSize: 18, lineHeight: 1, minWidth: 38 }}
+          style={{ fontSize: 18, lineHeight: 1, minWidth: 38, marginBottom: 0 }}
+          onClick={e => { if (!connected || uploadProgress !== null) e.preventDefault() }}
         >
           {uploadProgress !== null
             ? <span style={{ fontSize: 11 }}>{uploadProgress}%</span>
             : <span className="material-icons" style={{ fontSize: 18 }}>attach_file</span>}
-        </button>
+        </label>
         <button
           ref={buttonRef}
           type="button"
