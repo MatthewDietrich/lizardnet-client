@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { deleteFromS3 } from './lib/s3Upload'
 import lizardIcon from './assets/lizard_icon.svg'
 import { useIrcClient } from './hooks/useIrcClient'
 import { useSettings } from './hooks/useSettings'
@@ -15,7 +16,7 @@ import PmTabs from './components/PmTabs'
 
 export default function App() {
   const { settings, setSetting } = useSettings()
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper } = useIrcClient(settings)
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl } = useIrcClient(settings)
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -183,7 +184,13 @@ export default function App() {
       {connected && <TopicBar topic={topic} isOper={isOper} onChangeTopic={changeTopic} />}
 
       <div className="d-flex gap-3 flex-grow-1" style={{ minHeight: 0 }}>
-        <MessageList messages={activeMessages} nick={nick} onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }} />
+        <MessageList
+          messages={activeMessages}
+          nick={nick}
+          onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
+          canDeleteMedia={isOper || ops.includes(nick)}
+          onDeleteMedia={url => deleteFromS3(url).then(() => redactMediaUrl(url)).catch(err => addActive(`Failed to delete: ${err.message}`))}
+        />
         <UserList
           users={users}
           ops={ops}

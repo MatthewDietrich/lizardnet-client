@@ -73,7 +73,26 @@ const RESET: Style = {
   strikethrough: false, monospace: false, fg: null, bg: null,
 }
 
-export function parseIrc(text: string): ReactNode[] {
+function withDelete(node: ReactNode, url: string, k: number, onDelete: (url: string) => void): ReactNode {
+  return (
+    <div key={k} style={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
+      {node}
+      <button
+        onClick={() => { if (confirm('Delete this media permanently?')) onDelete(url) }}
+        title="Delete media"
+        style={{
+          position: 'absolute', top: 4, right: 4,
+          background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: 3,
+          color: '#fff', cursor: 'pointer', padding: '2px 5px', lineHeight: 1,
+        }}
+      >
+        <span className="material-icons" style={{ fontSize: 13, verticalAlign: 'middle' }}>delete</span>
+      </button>
+    </div>
+  )
+}
+
+export function parseIrc(text: string, onDeleteMedia?: (url: string) => void): ReactNode[] {
   const nodes: ReactNode[] = []
   let style: Style = { ...RESET }
   let buffer = ''
@@ -139,13 +158,14 @@ export function parseIrc(text: string): ReactNode[] {
         )
       }
       if (isS3Url(parts[j]) && isAudioUrl(parts[j])) {
-        nodes.push(
-          <audio key={key++} controls src={parts[j]} style={{ display: 'block', maxWidth: 360, marginTop: 4 }} />
-        )
+        const node = <audio controls src={parts[j]} style={{ display: 'block', maxWidth: 360, marginTop: 4 }} />
+        nodes.push(onDeleteMedia ? withDelete(node, parts[j], key++, onDeleteMedia) : <div key={key++}>{node}</div>)
       } else if (isS3Url(parts[j]) && isVideoUrl(parts[j])) {
-        nodes.push(<InlineVideo key={key++} src={parts[j]} />)
+        const node = <InlineVideo src={parts[j]} />
+        nodes.push(onDeleteMedia ? withDelete(node, parts[j], key++, onDeleteMedia) : <InlineVideo key={key++} src={parts[j]} />)
       } else if (isS3Url(parts[j]) && isImageUrl(parts[j])) {
-        nodes.push(<InlineImage key={key++} src={parts[j]} />)
+        const node = <InlineImage src={parts[j]} />
+        nodes.push(onDeleteMedia ? withDelete(node, parts[j], key++, onDeleteMedia) : <InlineImage key={key++} src={parts[j]} />)
       } else if (isImageUrl(parts[j])) {
         nodes.push(
           <CollapseEmbed key={key++} label="Image">

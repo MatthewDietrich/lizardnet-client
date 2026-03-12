@@ -634,6 +634,20 @@ export function useIrcClient(settings: Settings) {
     }
   }
 
+  function redactMediaUrl(url: string) {
+    const replace = (text: string) => text.replace(url, '[media deleted]')
+    setMessages(prev => prev.map(m => m.text.includes(url) ? { ...m, text: replace(m.text) } : m))
+    setPmConversations(prev => {
+      let changed = false
+      const next = new Map(prev)
+      for (const [peer, msgs] of next) {
+        const updated = msgs.map(m => m.text.includes(url) ? { ...m, text: replace(m.text) } : m)
+        if (updated.some((m, i) => m !== msgs[i])) { next.set(peer, updated); changed = true }
+      }
+      return changed ? next : prev
+    })
+  }
+
   function setAway(message: string) {
     clientRef.current?.raw(`AWAY :${message}`)
   }
@@ -646,5 +660,5 @@ export function useIrcClient(settings: Settings) {
     clientRef.current?.raw(`OPER ${name} ${password}`)
   }
 
-  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper }
+  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl }
 }
