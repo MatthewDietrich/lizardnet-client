@@ -4,7 +4,7 @@ export function InlineVideo({ src }: { src: string }) {
       <video
         src={src}
         controls
-        style={{ maxWidth: 400, maxHeight: 300, display: 'block', borderRadius: 8 }}
+        style={{ maxWidth: 'min(400px, 100%)', maxHeight: 300, display: 'block', borderRadius: 8 }}
       />
     </div>
   )

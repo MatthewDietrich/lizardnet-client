@@ -19,7 +19,7 @@ export function InlineImage({ src }: { src: string }) {
           src={src}
           alt=""
           onClick={() => setExpanded(true)}
-          style={{ maxWidth: 400, maxHeight: 300, display: 'block', borderRadius: 8, cursor: 'zoom-in' }}
+          style={{ maxWidth: 'min(400px, 100%)', maxHeight: 300, display: 'block', borderRadius: 8, cursor: 'zoom-in' }}
         />
       </div>
 
