@@ -200,6 +200,11 @@ export function useIrcClient(settings: Settings) {
       const serverTime = tags?.['server-time'] ? new Date(tags['server-time']) : undefined
       const isHistory = !!(tags?.batch && activeBatchesRef.current.get(tags.batch) === 'chathistory')
       if (target?.toLowerCase() === '#chat') {
+        if (message.startsWith('MEDIADELETE ')) {
+          const url = message.slice('MEDIADELETE '.length).trim()
+          if (url) redactMediaUrl(url)
+          return
+        }
         addMessage(who, message, isAction ? 'action' : 'chat', serverTime, isHistory)
       } else {
         addPmMessage(who, who, message, true, isAction ? 'action' : 'chat')
@@ -224,10 +229,6 @@ export function useIrcClient(settings: Settings) {
         if (parts[i]) p.push(parts[i])
       }
 
-      if (cmd === 'PRIVMSG' && p[0]?.toLowerCase() === '#chat' && p[1]?.startsWith('\x01MEDIADELETE ') && p[1].endsWith('\x01')) {
-        const url = p[1].slice('\x01MEDIADELETE '.length, -1).trim()
-        if (url) redactMediaUrl(url)
-      }
       if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) {
         setTopicState(p[2])
       }
@@ -639,8 +640,7 @@ export function useIrcClient(settings: Settings) {
   }
 
   function sendMediaDelete(url: string) {
-    console.log('[sendMediaDelete] client:', !!clientRef.current, 'url:', url)
-    clientRef.current?.raw(`PRIVMSG #chat :\x01MEDIADELETE ${url}\x01`)
+    clientRef.current?.raw(`PRIVMSG #chat :MEDIADELETE ${url}`)
   }
 
   function redactMediaUrl(url: string) {
