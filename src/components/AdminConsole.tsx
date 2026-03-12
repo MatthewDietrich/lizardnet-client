@@ -19,15 +19,15 @@ export default function AdminConsole({ onClose, onSendRaw, bannedUsers, onUnban 
 
   return (
     <>
-      <div className="modal show d-block" tabIndex={-1}>
-        <div className="modal-dialog modal-dialog-centered">
+      <div className="modal show d-block" tabIndex={-1} onClick={onClose}>
+        <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
           <div className="modal-content">
             <div className="modal-header">
               <h6 className="modal-title">Moderator Console</h6>
               <button type="button" className="btn-close" onClick={onClose} />
             </div>
             <div className="modal-body">
-              <p className="small mb-2" style={{ color: '#BE9AAE' }}>Banned users</p>
+              <p className="small mb-2" style={{ color: 'var(--c-tertiary)' }}>Banned users</p>
               <div
                 className="border rounded p-2 mb-3 font-monospace"
                 style={{ minHeight: 48, maxHeight: 160, overflowY: 'auto', fontSize: 12 }}
@@ -49,7 +49,7 @@ export default function AdminConsole({ onClose, onSendRaw, bannedUsers, onUnban 
                 }
               </div>
 
-              <p className="small mb-2" style={{ color: '#9A9CBE' }}>Raw command</p>
+              <p className="small mb-2" style={{ color: 'var(--c-secondary)' }}>Raw command</p>
               <form onSubmit={handleSubmit}>
                 <div className="input-group">
                   <input

@@ -121,6 +121,8 @@ body {
 .modal-backdrop.show { background: var(--c-surface); opacity: 0.85; }
 .btn-close { filter: invert(1) sepia(1) saturate(2) hue-rotate(100deg); opacity: 0.6; }
 .btn-close:hover { opacity: 1; }
+[data-theme="light"] .btn-close { filter: none; opacity: 0.5; }
+[data-theme="light"] .btn-close:hover { opacity: 0.9; }
 
 /* ── Nav tabs (ConnectModal) ────────────────────────────── */
 

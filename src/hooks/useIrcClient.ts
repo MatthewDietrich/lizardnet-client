@@ -38,6 +38,9 @@ export function useIrcClient() {
   const activePmPeerRef = useRef<string | null>(null)
   const connStatusRef = useRef<ConnStatus>('disconnected')
   const activeBatchesRef = useRef<Map<string, string>>(new Map())
+  const pendingBansRef = useRef<Set<string>>(new Set())
+  const silentWhoisRef = useRef<Set<string>>(new Set())
+  const maskToNickRef = useRef<Map<string, string>>(new Map())
 
   function setActivePmPeer(peer: string | null) {
     activePmPeerRef.current = peer
@@ -187,6 +190,17 @@ export function useIrcClient() {
         setAwayUsers(prev => new Set([...prev, nickRef.current]))
       }
       if (cmd === '381') { setIsOper(true); client.raw('MODE #chat +b') }
+      if (cmd === '311' && p[1] && pendingBansRef.current.has(p[1])) {
+        // RPL_WHOISUSER: p[0]=ournick p[1]=nick p[2]=user p[3]=host
+        const mask = `*!${p[2]}@${p[3]}`
+        pendingBansRef.current.delete(p[1])
+        maskToNickRef.current.set(mask, p[1])
+        clientRef.current?.raw(`MODE #chat +b ${mask}`)
+        clientRef.current?.raw(`KICK #chat ${p[1]}`)
+      }
+      if (cmd === '474' || cmd === '465') {
+        addMessage('*', 'You have been banned.', 'event')
+      }
       if (cmd === '367' && p[1]?.toLowerCase() === '#chat' && p[2]) {
         setBannedUsers(prev => prev.includes(p[2]) ? prev : [...prev, p[2]])
       }
@@ -209,6 +223,7 @@ export function useIrcClient() {
     })
 
     client.on('whois', (e) => {
+      if (silentWhoisRef.current.has(e.nick)) { silentWhoisRef.current.delete(e.nick); return }
       const lines: string[] = []
       if (e.idle !== undefined) lines.push(`${e.nick} has been idle ${e.idle}s`)
       if (e.operator) lines.push(`  ${e.nick} is a server admin`)
@@ -240,11 +255,14 @@ export function useIrcClient() {
         for (const m of e.modes ?? []) {
           if (m.mode === '+b' && m.param) {
             setBannedUsers(prev => prev.includes(m.param!) ? prev : [...prev, m.param!])
-            addMessage('*', `${m.param} has been banned`, 'event')
+            const nick = maskToNickRef.current.get(m.param!) ?? m.param!
+            addMessage('*', `${nick} has been banned`, 'event')
           }
           if (m.mode === '-b' && m.param) {
             setBannedUsers(prev => prev.filter(u => u !== m.param))
-            addMessage('*', `${m.param} has been unbanned`, 'event')
+            const nick = maskToNickRef.current.get(m.param!) ?? m.param!
+            maskToNickRef.current.delete(m.param!)
+            addMessage('*', `${nick} has been unbanned`, 'event')
           }
         }
       }
@@ -515,8 +533,9 @@ export function useIrcClient() {
   }
 
   function ban(target: string) {
-    clientRef.current?.raw(`MODE #chat +b ${target}`)
-    clientRef.current?.raw(`KICK #chat ${target}`)
+    pendingBansRef.current.add(target)
+    silentWhoisRef.current.add(target)
+    clientRef.current?.raw(`WHOIS ${target}`)
   }
 
   function unban(mask: string) {
