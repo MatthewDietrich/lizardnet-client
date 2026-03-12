@@ -82,9 +82,9 @@ export default function App() {
     if (text.startsWith('/msg ')) {
       const rest = text.slice(5)
       const spaceIdx = rest.indexOf(' ')
-      if (spaceIdx !== -1) {
-        const target = rest.slice(0, spaceIdx)
-        const body = rest.slice(spaceIdx + 1)
+      const target = spaceIdx === -1 ? rest.trim() : rest.slice(0, spaceIdx)
+      const body = spaceIdx === -1 ? '' : rest.slice(spaceIdx + 1)
+      if (target) {
         openPmConversation(target)
         if (body.trim()) sendPrivMsg(target, body)
         switchTab(target)
