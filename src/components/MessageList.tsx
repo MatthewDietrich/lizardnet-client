@@ -118,7 +118,7 @@ export default function MessageList({ messages, nick, onNickClick }: Props) {
     setNewCount(0)
   }
 
-  const mentionRegex = useMemo(() => nick ? new RegExp(`\\b${nick}\\b`, 'i') : null, [nick])
+  const mentionRegex = useMemo(() => nick ? new RegExp(`\\b${nick.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i') : null, [nick])
 
   const filteredMessages = useMemo(() => {
     if (!searchTerm) return messages
