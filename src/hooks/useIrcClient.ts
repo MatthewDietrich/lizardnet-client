@@ -30,8 +30,6 @@ export function useIrcClient() {
   function escapeRegex(s: string) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
 
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
-  const rawOutputRef = useRef(false)
-  const rawOutputTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   type EncryptedCreds = { nick: string; key: CryptoKey; iv: Uint8Array<ArrayBuffer>; ciphertext: ArrayBuffer }
   const credentialsRef = useRef<EncryptedCreds | null>(null)
 
@@ -249,10 +247,6 @@ export function useIrcClient() {
             addMessage('*', '─── history above ───', 'event')
           }
         }
-      }
-      if (rawOutputRef.current && /^\d+$/.test(cmd)) {
-        const text = p[p.length - 1]
-        if (text) addMessage(cmd, text, 'event')
       }
     })
 
@@ -571,14 +565,6 @@ export function useIrcClient() {
     })
   }
 
-  function sendRaw(command: string) {
-    if (!clientRef.current) return
-    rawOutputRef.current = true
-    if (rawOutputTimerRef.current) clearTimeout(rawOutputTimerRef.current)
-    rawOutputTimerRef.current = setTimeout(() => { rawOutputRef.current = false }, 5000)
-    clientRef.current.raw(command)
-  }
-
   function whois(target: string) {
     clientRef.current?.raw(`WHOIS ${target}`)
   }
@@ -640,5 +626,5 @@ export function useIrcClient() {
     clientRef.current?.raw(`OPER ${name} ${password}`)
   }
 
-  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper }
+  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper }
 }
