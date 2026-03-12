@@ -113,6 +113,20 @@ export function useIrcClient() {
     setMessages(prev => [...prev, { from, text, ts: ts ?? new Date(), kind }])
   }
 
+  function addActive(text: string) {
+    const peer = activePmPeerRef.current
+    if (peer) {
+      setPmConversations(prev => {
+        const key = resolveKey(prev, peer)
+        const next = new Map(prev)
+        next.set(key, [...(next.get(key) ?? []), { from: '*', text, ts: new Date(), kind: 'event' as const }])
+        return next
+      })
+    } else {
+      addMessage('*', text, 'event')
+    }
+  }
+
   function resolveKey(map: Map<string, unknown>, peer: string): string {
     const lower = peer.toLowerCase()
     for (const key of map.keys()) {
@@ -182,14 +196,16 @@ export function useIrcClient() {
         addMessage('*', `Topic changed to: ${p[1]}`, 'event')
       }
       if (cmd === '305') {
-        addMessage('*', 'You are no longer marked as away.', 'event')
+        addActive('You are no longer marked as away.')
         setAwayUsers(prev => { const s = new Set(prev); s.delete(nickRef.current); return s })
       }
       if (cmd === '306') {
-        addMessage('*', 'You have been marked as away.', 'event')
+        addActive('You have been marked as away.')
         setAwayUsers(prev => new Set([...prev, nickRef.current]))
       }
-      if (cmd === '381') { setIsOper(true); client.raw('MODE #chat +b') }
+      if (cmd === '381') { setIsOper(true); client.raw('MODE #chat +b'); addActive('You are now a server operator.') }
+      if (cmd === '464') { addActive('OPER failed: incorrect password.') }
+      if (cmd === '491') { addActive('OPER failed: no O-lines for your host.') }
       if (cmd === '311' && p[1] && pendingBansRef.current.has(p[1])) {
         // RPL_WHOISUSER: p[0]=ournick p[1]=nick p[2]=user p[3]=host
         const mask = `*!${p[2]}@${p[3]}`
@@ -199,7 +215,7 @@ export function useIrcClient() {
         clientRef.current?.raw(`KICK #chat ${p[1]}`)
       }
       if (cmd === '474' || cmd === '465') {
-        addMessage('*', 'You have been banned.', 'event')
+        addActive('You have been banned.')
       }
       if (cmd === '367' && p[1]?.toLowerCase() === '#chat' && p[2]) {
         setBannedUsers(prev => prev.includes(p[2]) ? prev : [...prev, p[2]])
@@ -416,7 +432,6 @@ export function useIrcClient() {
       }
       if (password) {
         client.say('NickServ', `IDENTIFY ${password}`)
-        client.raw(`OPER ${chosenNick} ${password}`)
       }
       client.join('#chat')
     })
@@ -581,5 +596,9 @@ export function useIrcClient() {
     clientRef.current?.raw('AWAY')
   }
 
-  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack, clearPmUnread, closePmConversation, setActivePmPeer }
+  function sendOper(name: string, password: string) {
+    clientRef.current?.raw(`OPER ${name} ${password}`)
+  }
+
+  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, addActive, sendAction, setAway, setBack, clearPmUnread, closePmConversation, setActivePmPeer, sendOper }
 }

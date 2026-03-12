@@ -12,7 +12,7 @@ import ChangeNickPopup from './components/ChangeNickPopup'
 import PmTabs from './components/PmTabs'
 
 export default function App() {
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, sendAction, setAway, setBack, clearPmUnread, closePmConversation, setActivePmPeer } = useIrcClient()
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, closePmConversation, setActivePmPeer, sendOper } = useIrcClient()
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -62,6 +62,7 @@ export default function App() {
     '/ghost <nick> <password>     — disconnect a ghost using your nickname',
     '/away [message]              — set yourself as away',
     '/back                        — return from away',
+    '/oper <name> <password>      — authenticate as a server operator',
     '/help                        — show this help',
   ]
 
@@ -106,6 +107,13 @@ export default function App() {
         return
       }
     }
+    if (text.startsWith('/oper ')) {
+      const parts = text.slice(6).trim().split(' ')
+      if (parts.length >= 2) {
+        sendOper(parts[0], parts[1])
+        return
+      }
+    }
     if (text === '/away' || text.startsWith('/away ')) {
       setAway(text.slice(6))
       return
@@ -115,11 +123,11 @@ export default function App() {
       return
     }
     if (text === '/help') {
-      for (const line of HELP_LINES) addMessage('*', line, 'event')
+      for (const line of HELP_LINES) addActive(line)
       return
     }
     if (text.startsWith('/')) {
-      addMessage('*', 'Invalid command. Type /help for a list of commands.', 'event')
+      addActive('Invalid command. Type /help for a list of commands.')
       return
     }
     if (activeTab !== '#chat') {
