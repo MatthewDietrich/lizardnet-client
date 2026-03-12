@@ -16,7 +16,7 @@ import PmTabs from './components/PmTabs'
 
 export default function App() {
   const { settings, setSetting } = useSettings()
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl } = useIrcClient(settings)
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete } = useIrcClient(settings)
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -189,7 +189,7 @@ export default function App() {
           nick={nick}
           onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
           canDeleteMedia={isOper || ops.includes(nick)}
-          onDeleteMedia={url => deleteFromS3(url).then(() => redactMediaUrl(url)).catch(err => addActive(`Failed to delete: ${err.message}`))}
+          onDeleteMedia={url => deleteFromS3(url).then(() => { redactMediaUrl(url); sendMediaDelete(url) }).catch(err => addActive(`Failed to delete: ${err.message}`))}
         />
         <UserList
           users={users}

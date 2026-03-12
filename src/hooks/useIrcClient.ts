@@ -224,6 +224,10 @@ export function useIrcClient(settings: Settings) {
         if (parts[i]) p.push(parts[i])
       }
 
+      if (cmd === 'PRIVMSG' && p[0]?.toLowerCase() === '#chat' && p[1]?.startsWith('\x01MEDIADELETE ') && p[1].endsWith('\x01')) {
+        const url = p[1].slice('\x01MEDIADELETE '.length, -1).trim()
+        if (url) redactMediaUrl(url)
+      }
       if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) {
         setTopicState(p[2])
       }
@@ -634,6 +638,11 @@ export function useIrcClient(settings: Settings) {
     }
   }
 
+  function sendMediaDelete(url: string) {
+    console.log('[sendMediaDelete] client:', !!clientRef.current, 'url:', url)
+    clientRef.current?.raw(`PRIVMSG #chat :\x01MEDIADELETE ${url}\x01`)
+  }
+
   function redactMediaUrl(url: string) {
     const replace = (text: string) => text.replace(url, '[media deleted]')
     setMessages(prev => prev.map(m => m.text.includes(url) ? { ...m, text: replace(m.text) } : m))
@@ -660,5 +669,5 @@ export function useIrcClient(settings: Settings) {
     clientRef.current?.raw(`OPER ${name} ${password}`)
   }
 
-  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl }
+  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete }
 }
