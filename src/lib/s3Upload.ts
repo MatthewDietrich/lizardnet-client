@@ -6,11 +6,12 @@ export async function uploadToS3(file: File, onProgress?: (pct: number) => void)
   if (file.size > MAX_SIZE) throw new Error('File too large (max 50MB)')
 
   const token = import.meta.env.VITE_UPLOAD_TOKEN
+  if (!token) throw new Error('VITE_UPLOAD_TOKEN is not set')
   const res = await fetch(PRESIGN_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify({ filename: file.name, contentType: file.type }),
   })
