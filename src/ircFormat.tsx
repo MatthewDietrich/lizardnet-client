@@ -4,6 +4,8 @@ import { TwitterEmbed, getTwitterInfo } from './components/TwitterEmbed'
 import { BlueskyEmbed, getBlueskyUrl } from './components/BlueskyEmbed'
 import { InlineImage } from './components/InlineImage'
 import { CollapseEmbed } from './components/CollapseEmbed'
+import { InlineVideo } from './components/InlineVideo'
+import { BUCKET_URL } from './lib/s3Upload'
 
 function replaceEmojis(text: string): string {
   return text.replace(/:([a-z0-9_+-]+):/g, (match, name) => getEmoji(name) ?? match)
@@ -13,6 +15,19 @@ function isImageUrl(url: string): boolean {
   try {
     const path = new URL(url).pathname.toLowerCase()
     return /\.(png|jpe?g|gif|webp|avif|svg)$/.test(path)
+  } catch { return false }
+}
+
+function isVideoUrl(url: string): boolean {
+  try {
+    const path = new URL(url).pathname.toLowerCase()
+    return /\.(mp4|webm|ogv|mov)$/.test(path)
+  } catch { return false }
+}
+
+function isS3Url(url: string): boolean {
+  try {
+    return new URL(url).href.startsWith(BUCKET_URL)
   } catch { return false }
 }
 
@@ -78,7 +93,7 @@ export function parseIrc(text: string): ReactNode[] {
       <span key={key++} style={spanStyle}>
         {parts.map((part, j) =>
           j % 2 === 1
-            ? <a key={j} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
+            ? isS3Url(part) ? null : <a key={j} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
             : part
         )}
       </span>
@@ -114,7 +129,11 @@ export function parseIrc(text: string): ReactNode[] {
           </CollapseEmbed>
         )
       }
-      if (isImageUrl(parts[j])) {
+      if (isS3Url(parts[j]) && isVideoUrl(parts[j])) {
+        nodes.push(<InlineVideo key={key++} src={parts[j]} />)
+      } else if (isS3Url(parts[j]) && isImageUrl(parts[j])) {
+        nodes.push(<InlineImage key={key++} src={parts[j]} />)
+      } else if (isImageUrl(parts[j])) {
         nodes.push(
           <CollapseEmbed key={key++} label="Image">
             <InlineImage src={parts[j]} />

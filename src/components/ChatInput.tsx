@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import EmojiPicker, { type EmojiClickData, Theme } from 'emoji-picker-react'
+import { uploadToS3 } from '../lib/s3Upload'
 
 interface Props {
   connected: boolean
@@ -19,6 +20,9 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
   const pickerRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const tabStateRef = useRef<{
     matches: string[]
     idx: number
@@ -64,6 +68,28 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
     document.addEventListener('mousedown', onMouseDown)
     return () => document.removeEventListener('mousedown', onMouseDown)
   }, [showPicker])
+
+  async function handleFile(file: File) {
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) return
+    setUploadError(null)
+    setUploadProgress(0)
+    try {
+      const url = await uploadToS3(file, setUploadProgress)
+      setUploadProgress(null)
+      onSend(url)
+    } catch (e) {
+      setUploadProgress(null)
+      setUploadError(e instanceof Error ? e.message : 'Upload failed')
+      setTimeout(() => setUploadError(null), 4000)
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const file = e.clipboardData.files[0]
+    if (!file) return
+    e.preventDefault()
+    handleFile(file)
+  }
 
   function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault()
@@ -136,8 +162,28 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
           value={input}
           onChange={e => { setInput(e.target.value); tabStateRef.current = null }}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           disabled={!connected}
         />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          style={{ display: 'none' }}
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }}
+        />
+        <button
+          type="button"
+          className="btn btn-outline-secondary"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={!connected || uploadProgress !== null}
+          title={uploadProgress !== null ? `Uploading ${uploadProgress}%` : 'Upload image or video'}
+          style={{ fontSize: 18, lineHeight: 1, minWidth: 38 }}
+        >
+          {uploadProgress !== null
+            ? <span style={{ fontSize: 11 }}>{uploadProgress}%</span>
+            : <span className="material-icons" style={{ fontSize: 18 }}>attach_file</span>}
+        </button>
         <button
           ref={buttonRef}
           type="button"
@@ -153,6 +199,9 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
           <span className="material-icons" style={{ fontSize: 18 }}>send</span>
         </button>
       </form>
+      {uploadError && (
+        <div className="text-danger mt-1" style={{ fontSize: 12 }}>{uploadError}</div>
+      )}
     </div>
   )
 })
