@@ -14,6 +14,20 @@
   --c-muted-input:     #2a2a2a;
 }
 
+[data-theme="light"] {
+  --c-bg:              #9ABEAA;
+  --c-surface:         #FFFFFF;
+  --c-on-accent:       #FFFFFF;
+  --c-primary:         #000F07;
+  --c-primary-rgb:     0, 15, 7;
+  --c-secondary:       #3A3C7E;
+  --c-tertiary:        #8E2A5A;
+  --c-quaternary:      #5A5800;
+  --c-disabled-border: #ccc;
+  --c-disabled-fg:     #999;
+  --c-muted-input:     #f0f0f0;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 
 body {

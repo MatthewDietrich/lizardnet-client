@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import lizardIcon from './assets/lizard_icon.png'
+import lizardIcon from './assets/lizard_icon.svg'
 import { useIrcClient } from './hooks/useIrcClient'
 import ConnectModal from './components/ConnectModal'
 import AdminConsole from './components/AdminConsole'
@@ -23,7 +23,14 @@ export default function App() {
   const [showConnectModal, setShowConnectModal] = useState(true)
   const [showAdminConsole, setShowAdminConsole] = useState(false)
   const [showNickPopup, setShowNickPopup] = useState(false)
+  const [showThemePanel, setShowThemePanel] = useState(false)
   const [activeTab, setActiveTab] = useState('#chat')
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme') as 'dark' | 'light') ?? 'dark')
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
   const chatInputRef = useRef<ChatInputHandle>(null)
 
   useEffect(() => {
@@ -128,7 +135,7 @@ export default function App() {
   return (
     <div className="d-flex flex-column px-4 py-3" style={{ height: '100dvh' }}>
       <div className="d-flex align-items-center gap-3 mb-3">
-        <img src={lizardIcon} alt="" style={{ height: 32 }} />
+        <img src={lizardIcon} alt="" style={{ height: 32, filter: theme === 'light' ? 'brightness(0)' : 'none' }} />
         <h4 className="mb-0">Lizardnet</h4>
         <span title={connStatus} style={{
           width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
@@ -141,13 +148,45 @@ export default function App() {
             Moderator Console
           </button>
         )}
-        <button
-          className="btn btn-sm btn-outline-secondary ms-auto d-flex align-items-center gap-1"
-          onClick={() => connected ? setShowNickPopup(true) : setShowConnectModal(true)}
-        >
-          <span className="material-icons" style={{ fontSize: 16 }}>account_circle</span>
-          {nick ? <><strong>{nick}</strong></> : 'Set nickname'}
-        </button>
+        <div className="ms-auto d-flex align-items-center gap-2" style={{ position: 'relative' }}>
+          <button
+            className="btn btn-sm btn-outline-secondary d-flex align-items-center"
+            onClick={() => setShowThemePanel(v => !v)}
+            title="Theme"
+          >
+            <span className="material-icons" style={{ fontSize: 16 }}>palette</span>
+          </button>
+          {showThemePanel && (
+            <div style={{
+              position: 'absolute', top: '100%', right: 0, marginTop: 6, zIndex: 200,
+              background: 'var(--c-surface)', border: '1px solid var(--c-border)',
+              borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 130,
+            }}>
+              {(['dark', 'light'] as const).map(t => (
+                <button
+                  key={t}
+                  className="btn btn-sm"
+                  onClick={() => { setTheme(t); setShowThemePanel(false) }}
+                  style={{
+                    textAlign: 'left',
+                    background: theme === t ? 'rgba(var(--c-primary-rgb), 0.12)' : 'transparent',
+                    border: '1px solid ' + (theme === t ? 'var(--c-primary)' : 'var(--c-border)'),
+                    color: 'var(--c-primary)',
+                  }}
+                >
+                  {t === 'dark' ? '🌙 Dark' : '☀️ Light'}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+            onClick={() => connected ? setShowNickPopup(true) : setShowConnectModal(true)}
+          >
+            <span className="material-icons" style={{ fontSize: 16 }}>account_circle</span>
+            {nick ? <><strong>{nick}</strong></> : 'Set nickname'}
+          </button>
+        </div>
       </div>
 
       {connected && <TopicBar topic={topic} isOper={isOper} onChangeTopic={changeTopic} />}
