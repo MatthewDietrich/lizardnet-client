@@ -6,6 +6,11 @@ frontend:
         - npm ci
     build:
       commands:
+        - |
+          if [ -z "$VITE_UPLOAD_TOKEN" ]; then
+            echo "ERROR: VITE_UPLOAD_TOKEN is not set"
+            exit 1
+          fi
         - npm run build
   artifacts:
     baseDirectory: dist
