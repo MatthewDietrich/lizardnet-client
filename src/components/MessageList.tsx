@@ -27,33 +27,35 @@ function highlight(text: string, term: string) {
   )
 }
 
+const gridRow = { display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: '0.4em' }
+
 const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickClick }: { m: Message; mentioned: boolean; searchTerm: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void }) {
-  const ts = <span style={{ fontSize: 11, color: 'var(--c-disabled-fg)' }}>{m.ts.toLocaleTimeString()}</span>
+  const ts = <span style={{ fontSize: 11, color: 'var(--c-disabled-fg)', whiteSpace: 'nowrap' }}>{m.ts.toLocaleTimeString()}</span>
   const text = searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text)
   const fromText = searchTerm ? highlight(m.from, searchTerm) : m.from
   const from = m.from && m.from !== '*' && m.kind !== 'event' && onNickClick
     ? <strong style={{ cursor: 'pointer' }} onClick={e => onNickClick(m.from, { x: e.clientX, y: e.clientY })}>{fromText}</strong>
     : <strong>{fromText}</strong>
   if (m.kind === 'event') return (
-    <div className="fst-italic" style={{ fontSize: 12, color: 'var(--c-tertiary)' }}>
-      {ts}{' '}{searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text)}
+    <div className="fst-italic" style={{ ...gridRow, fontSize: 12, color: 'var(--c-tertiary)' }}>
+      {ts}<span>{searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text)}</span>
     </div>
   )
   if (m.kind === 'action') return (
-    <div className="fst-italic" style={mentioned ? mentionStyle : undefined}>
-      {ts}{' '}{from} {text}
+    <div className="fst-italic" style={mentioned ? { ...gridRow, ...mentionStyle } : gridRow}>
+      {ts}<span>{from} {text}</span>
     </div>
   )
   if (m.kind === 'pm') return (
-    <div style={{ color: 'var(--c-quaternary)' }}>
-      {ts}{' '}<span style={{ opacity: 0.6 }}>[PM]</span> {from}: {text}
+    <div style={{ ...gridRow, color: 'var(--c-quaternary)' }}>
+      {ts}<span><span style={{ opacity: 0.6 }}>[PM]</span> {from}: {text}</span>
     </div>
   )
   const emojiOnly = EMOJI_ONLY_RE.test(m.text.trim())
   return (
-    <div style={mentioned ? mentionStyle : undefined}>
-      {ts}{' '}{from}:{' '}
-      <span style={emojiOnly ? { fontSize: 36, lineHeight: 1.1 } : undefined}>{text}</span>
+    <div style={mentioned ? { ...gridRow, ...mentionStyle } : gridRow}>
+      {ts}
+      <span>{from}:{' '}<span style={emojiOnly ? { fontSize: 36, lineHeight: 1.1 } : undefined}>{text}</span></span>
     </div>
   )
 })
