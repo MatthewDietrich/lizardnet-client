@@ -29,7 +29,7 @@ export function TwitterEmbed({ username, statusId }: { username: string; statusI
 
     function embed() {
       if (!containerRef.current || !window.twttr) return
-      containerRef.current.innerHTML = ''
+      containerRef.current.replaceChildren()
       window.twttr.widgets.createTweet(statusId, containerRef.current, { theme: 'dark', dnt: true })
     }
 

@@ -46,6 +46,9 @@ export function useIrcClient() {
     const buf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: enc.iv }, enc.key, enc.ciphertext)
     return new TextDecoder().decode(buf)
   }
+  const sendTimestampsRef = useRef<number[]>([])
+  const RATE_LIMIT = { messages: 5, windowMs: 4000 }
+
   const manualDisconnectRef = useRef(false)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const reconnectDelayRef = useRef(2000)
@@ -512,6 +515,13 @@ export function useIrcClient() {
 
   function sendMessage(text: string) {
     if (!text.trim() || !clientRef.current) return
+    const now = Date.now()
+    sendTimestampsRef.current = sendTimestampsRef.current.filter(t => now - t < RATE_LIMIT.windowMs)
+    if (sendTimestampsRef.current.length >= RATE_LIMIT.messages) {
+      addActive(`Slow down — max ${RATE_LIMIT.messages} messages per ${RATE_LIMIT.windowMs / 1000}s.`)
+      return
+    }
+    sendTimestampsRef.current.push(now)
     clientRef.current.say('#chat', text)
     addMessage(nick, text)
   }
