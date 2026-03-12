@@ -6,15 +6,20 @@ frontend:
         - npm ci
     build:
       commands:
-        - echo "=== Env vars containing VITE or UPLOAD (values masked) ==="
-        - env | grep -iE "vite|upload" | sed 's/=.*/=***/' || echo "(none found)"
-        - echo "=== Searching SSM for UPLOAD_TOKEN ==="
-        - aws ssm describe-parameters --parameter-filters "Key=Name,Option=Contains,Values=UPLOAD_TOKEN" --query "Parameters[*].Name" --output text 2>&1 || echo "(SSM query failed - check build role permissions)"
         - |
           if [ -z "$VITE_UPLOAD_TOKEN" ]; then
-            echo "ERROR: VITE_UPLOAD_TOKEN is not set — check the output above for the correct SSM path or env var name"
+            export VITE_UPLOAD_TOKEN=$(aws ssm get-parameter \
+              --name "/amplify/shared/d1cpy98mx9zthl/VITE_UPLOAD_TOKEN" \
+              --with-decryption \
+              --query "Parameter.Value" \
+              --output text)
+          fi
+        - |
+          if [ -z "$VITE_UPLOAD_TOKEN" ]; then
+            echo "ERROR: VITE_UPLOAD_TOKEN could not be resolved"
             exit 1
           fi
+        - echo "VITE_UPLOAD_TOKEN is set (length=${#VITE_UPLOAD_TOKEN})"
         - npm run build
   artifacts:
     baseDirectory: dist
