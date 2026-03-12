@@ -7,7 +7,7 @@
       script-src 'self' https://platform.twitter.com;
       style-src 'self' https://fonts.googleapis.com 'unsafe-inline';
       font-src https://fonts.gstatic.com;
-      img-src 'self' https://lizardnet-media.s3.amazonaws.com data: blob:;
+      img-src 'self' https://lizardnet-media.s3.amazonaws.com https://cdn.jsdelivr.net data: blob:;
       media-src 'self' https://lizardnet-media.s3.amazonaws.com;
       connect-src 'self'
         wss://irc.lizard.fun:7003
@@ -20,6 +20,7 @@
         https://embed.bsky.app
         https://platform.twitter.com
         https://syndication.twitter.com;
+      worker-src 'self' blob:;
       object-src 'none';
       base-uri 'self';
       form-action 'self';
