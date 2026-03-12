@@ -8,9 +8,19 @@ frontend:
       commands:
         - |
           if [ -z "$VITE_UPLOAD_TOKEN" ]; then
-            echo "ERROR: VITE_UPLOAD_TOKEN is not set"
+            echo "Env var not set directly, attempting SSM fetch..."
+            export VITE_UPLOAD_TOKEN=$(aws ssm get-parameter \
+              --name "/amplify/shared/VITE_UPLOAD_TOKEN" \
+              --with-decryption \
+              --query "Parameter.Value" \
+              --output text 2>/dev/null || echo "")
+          fi
+        - |
+          if [ -z "$VITE_UPLOAD_TOKEN" ]; then
+            echo "ERROR: VITE_UPLOAD_TOKEN could not be resolved"
             exit 1
           fi
+        - echo "VITE_UPLOAD_TOKEN is set (length=${#VITE_UPLOAD_TOKEN})"
         - npm run build
   artifacts:
     baseDirectory: dist
