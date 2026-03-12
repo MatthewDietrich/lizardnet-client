@@ -44,7 +44,7 @@ export function BlueskyEmbed({ url }: { url: string }) {
   if (!iframeSrc) return null
   return (
     <div style={{ marginTop: '0.5em' }}>
-      <iframe ref={iframeRef} src={iframeSrc} width="400" height={height} style={{ border: 'none', display: 'block', borderRadius: 8 }} />
+      <iframe ref={iframeRef} src={iframeSrc} width="400" height={height} style={{ border: 'none', display: 'block', borderRadius: 8 }} sandbox="allow-scripts allow-same-origin" />
     </div>
   )
 }
