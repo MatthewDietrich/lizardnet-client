@@ -15,7 +15,10 @@ export async function uploadToS3(file: File, onProgress?: (pct: number) => void)
     },
     body: JSON.stringify({ filename: file.name, contentType: file.type }),
   })
-  if (!res.ok) throw new Error('Could not get upload URL')
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    throw new Error(err?.error ?? 'Could not get upload URL')
+  }
   const { uploadUrl, publicUrl } = await res.json()
 
   return new Promise((resolve, reject) => {

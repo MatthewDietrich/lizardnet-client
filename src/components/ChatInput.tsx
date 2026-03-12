@@ -71,7 +71,11 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
 
   async function handleFile(file: File) {
     const type = file.type || ''
-    if (type && !type.startsWith('image/') && !type.startsWith('video/')) return
+    if (type && !type.startsWith('image/') && !type.startsWith('video/')) {
+      setUploadError(`Unsupported file type: ${type}`)
+      setTimeout(() => setUploadError(null), 4000)
+      return
+    }
     setUploadError(null)
     setUploadProgress(0)
     try {
@@ -201,7 +205,9 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
         </button>
       </form>
       {uploadError && (
-        <div className="text-danger mt-1" style={{ fontSize: 12 }}>{uploadError}</div>
+        <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, fontSize: 12, color: 'var(--c-tertiary)', background: 'var(--c-surface)', border: '1px solid var(--c-tertiary)', borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap', zIndex: 200 }}>
+          {uploadError}
+        </div>
       )}
     </div>
   )
