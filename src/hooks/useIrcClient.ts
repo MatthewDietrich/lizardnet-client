@@ -125,6 +125,7 @@ export function useIrcClient(settings: Settings) {
   }, [])
 
   function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat', ts?: Date, isHistory = false) {
+    if (text.startsWith('MEDIADELETE ')) return
     const isMention = !isHistory && (kind === 'chat' || kind === 'action') &&
       !!nickRef.current &&
       from !== nickRef.current &&
@@ -200,8 +201,9 @@ export function useIrcClient(settings: Settings) {
       const serverTime = tags?.['server-time'] ? new Date(tags['server-time']) : undefined
       const isHistory = !!(tags?.batch && activeBatchesRef.current.get(tags.batch) === 'chathistory')
       if (target?.toLowerCase() === '#chat') {
-        if (message.startsWith('MEDIADELETE ')) {
-          const url = message.slice('MEDIADELETE '.length).trim()
+        const trimmed = message.trim()
+        if (trimmed.startsWith('MEDIADELETE ')) {
+          const url = trimmed.slice('MEDIADELETE '.length).trim()
           if (url) redactMediaUrl(url)
           return
         }
