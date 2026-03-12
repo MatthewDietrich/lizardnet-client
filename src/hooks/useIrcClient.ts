@@ -27,6 +27,8 @@ export function useIrcClient() {
   const [pmUnread, setPmUnread] = useState<Map<string, number>>(new Map())
   const [pmPeerRename, setPmPeerRename] = useState<{ from: string; to: string } | null>(null)
 
+  function escapeRegex(s: string) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
+
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
   const rawOutputRef = useRef(false)
   const rawOutputTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -117,7 +119,7 @@ export function useIrcClient() {
     const isMention = !isHistory && (kind === 'chat' || kind === 'action') &&
       !!nickRef.current &&
       from !== nickRef.current &&
-      new RegExp(`\\b${nickRef.current}\\b`, 'i').test(text)
+      new RegExp(`\\b${escapeRegex(nickRef.current)}\\b`, 'i').test(text)
     if (isMention) {
       notificationAudio.currentTime = 0
       notificationAudio.play().catch(() => {})

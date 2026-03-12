@@ -31,13 +31,15 @@ function isS3Url(url: string): boolean {
   } catch { return false }
 }
 
+const YT_ID_RE = /^[a-zA-Z0-9_-]{11}$/
+
 function getYouTubeId(url: string): string | null {
   try {
     const u = new URL(url)
-    if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('?')[0]
-    if (u.hostname === 'www.youtube.com' || u.hostname === 'youtube.com') {
-      return u.searchParams.get('v')
-    }
+    let id: string | null = null
+    if (u.hostname === 'youtu.be') id = u.pathname.slice(1).split('?')[0]
+    else if (u.hostname === 'www.youtube.com' || u.hostname === 'youtube.com') id = u.searchParams.get('v')
+    return id && YT_ID_RE.test(id) ? id : null
   } catch { /* invalid url */ }
   return null
 }
