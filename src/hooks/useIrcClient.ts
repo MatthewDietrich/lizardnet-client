@@ -457,23 +457,23 @@ export function useIrcClient() {
     clientRef.current = client
   }
 
-  function connect(chosenNick: string, password: string) {
+  async function connect(chosenNick: string, password: string) {
     clientRef.current?.quit('Reconnecting')
     clientRef.current = null
     manualDisconnectRef.current = false
     const normalizedNick = chosenNick.replace(' ', '_')
     setNick(normalizedNick)
     nickRef.current = normalizedNick
-    encryptCreds(normalizedNick, password).then(enc => { credentialsRef.current = enc })
+    credentialsRef.current = await encryptCreds(normalizedNick, password)
     reconnectDelayRef.current = 2000
     setConnStatus('connecting')
     connectCore(normalizedNick, password, false)
   }
 
-  function register(chosenNick: string, password: string, email: string) {
+  async function register(chosenNick: string, password: string, email: string) {
     setNick(chosenNick)
     nickRef.current = chosenNick
-    encryptCreds(chosenNick, password).then(enc => { credentialsRef.current = enc })
+    credentialsRef.current = await encryptCreds(chosenNick, password)
     manualDisconnectRef.current = false
     reconnectDelayRef.current = 2000
     setConnStatus('connecting')
@@ -528,6 +528,13 @@ export function useIrcClient() {
 
   function sendPrivMsg(target: string, text: string) {
     if (!text.trim() || !clientRef.current) return
+    const now = Date.now()
+    sendTimestampsRef.current = sendTimestampsRef.current.filter(t => now - t < RATE_LIMIT.windowMs)
+    if (sendTimestampsRef.current.length >= RATE_LIMIT.messages) {
+      addActive(`Slow down — max ${RATE_LIMIT.messages} messages per ${RATE_LIMIT.windowMs / 1000}s.`)
+      return
+    }
+    sendTimestampsRef.current.push(now)
     clientRef.current.say(target, text)
     addPmMessage(target, nickRef.current, text, false)
   }
@@ -537,6 +544,15 @@ export function useIrcClient() {
       if (!prev.get(peer)) return prev
       const next = new Map(prev)
       next.delete(peer)
+      return next
+    })
+  }
+
+  function openPmConversation(peer: string) {
+    setPmConversations(prev => {
+      if (prev.has(peer)) return prev
+      const next = new Map(prev)
+      next.set(peer, [])
       return next
     })
   }
@@ -624,5 +640,5 @@ export function useIrcClient() {
     clientRef.current?.raw(`OPER ${name} ${password}`)
   }
 
-  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, addActive, sendAction, setAway, setBack, clearPmUnread, closePmConversation, setActivePmPeer, sendOper }
+  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, sendRaw, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper }
 }

@@ -65,6 +65,7 @@ export default function MessageList({ messages, nick, onNickClick }: Props) {
   const endRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const atBottomRef = useRef(true)
+  const prevLengthRef = useRef(0)
   const [newCount, setNewCount] = useState(0)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -83,8 +84,11 @@ export default function MessageList({ messages, nick, onNickClick }: Props) {
 
   useLayoutEffect(() => {
     if (searchOpen) return
-    if (atBottomRef.current) {
+    const wasEmpty = prevLengthRef.current === 0
+    prevLengthRef.current = messages.length
+    if (wasEmpty || atBottomRef.current) {
       endRef.current?.scrollIntoView()
+      atBottomRef.current = true
       setNewCount(0)
     } else {
       setNewCount(n => n + 1)

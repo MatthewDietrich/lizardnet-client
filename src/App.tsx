@@ -12,7 +12,7 @@ import ChangeNickPopup from './components/ChangeNickPopup'
 import PmTabs from './components/PmTabs'
 
 export default function App() {
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, closePmConversation, setActivePmPeer, sendOper } = useIrcClient()
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper } = useIrcClient()
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -84,7 +84,9 @@ export default function App() {
       const spaceIdx = rest.indexOf(' ')
       if (spaceIdx !== -1) {
         const target = rest.slice(0, spaceIdx)
-        sendPrivMsg(target, rest.slice(spaceIdx + 1))
+        const body = rest.slice(spaceIdx + 1)
+        openPmConversation(target)
+        if (body.trim()) sendPrivMsg(target, body)
         switchTab(target)
         return
       }
