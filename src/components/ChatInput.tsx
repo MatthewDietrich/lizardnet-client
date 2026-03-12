@@ -70,7 +70,8 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
   }, [showPicker])
 
   async function handleFile(file: File) {
-    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) return
+    const type = file.type || ''
+    if (type && !type.startsWith('image/') && !type.startsWith('video/')) return
     setUploadError(null)
     setUploadProgress(0)
     try {
