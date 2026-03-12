@@ -30,7 +30,20 @@ export function useIrcClient() {
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
   const rawOutputRef = useRef(false)
   const rawOutputTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const credentialsRef = useRef<{ nick: string; password: string } | null>(null)
+  type EncryptedCreds = { nick: string; key: CryptoKey; iv: Uint8Array<ArrayBuffer>; ciphertext: ArrayBuffer }
+  const credentialsRef = useRef<EncryptedCreds | null>(null)
+
+  async function encryptCreds(nick: string, password: string): Promise<EncryptedCreds> {
+    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
+    const iv = crypto.getRandomValues(new Uint8Array(12)) as Uint8Array<ArrayBuffer>
+    const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(password))
+    return { nick, key, iv, ciphertext }
+  }
+
+  async function decryptCreds(enc: EncryptedCreds): Promise<string> {
+    const buf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: enc.iv }, enc.key, enc.ciphertext)
+    return new TextDecoder().decode(buf)
+  }
   const manualDisconnectRef = useRef(false)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const reconnectDelayRef = useRef(2000)
@@ -93,7 +106,7 @@ export function useIrcClient() {
           reconnectTimerRef.current = null
         }
         reconnectDelayRef.current = 2000
-        connectCore(creds.nick, creds.password, true)
+        decryptCreds(creds).then(pw => connectCore(creds.nick, pw, true))
       }
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
@@ -400,9 +413,8 @@ export function useIrcClient() {
       setConnStatus('reconnecting')
       addMessage('*', `Disconnected. Reconnecting in ${delay / 1000}s…`, 'event')
       reconnectTimerRef.current = setTimeout(() => {
-        if (credentialsRef.current) {
-          connectCore(credentialsRef.current.nick, credentialsRef.current.password, true)
-        }
+        const enc = credentialsRef.current
+        if (enc) decryptCreds(enc).then(pw => connectCore(enc.nick, pw, true))
       }, delay)
     })
 
@@ -447,7 +459,7 @@ export function useIrcClient() {
     const normalizedNick = chosenNick.replace(' ', '_')
     setNick(normalizedNick)
     nickRef.current = normalizedNick
-    credentialsRef.current = { nick: normalizedNick, password }
+    encryptCreds(normalizedNick, password).then(enc => { credentialsRef.current = enc })
     reconnectDelayRef.current = 2000
     setConnStatus('connecting')
     connectCore(normalizedNick, password, false)
@@ -456,7 +468,7 @@ export function useIrcClient() {
   function register(chosenNick: string, password: string, email: string) {
     setNick(chosenNick)
     nickRef.current = chosenNick
-    credentialsRef.current = { nick: chosenNick, password }
+    encryptCreds(chosenNick, password).then(enc => { credentialsRef.current = enc })
     manualDisconnectRef.current = false
     reconnectDelayRef.current = 2000
     setConnStatus('connecting')
