@@ -71,7 +71,7 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
 
   async function handleFile(file: File) {
     const type = file.type || ''
-    if (type && !type.startsWith('image/') && !type.startsWith('video/')) {
+    if (type && !type.startsWith('image/') && !type.startsWith('video/') && !type.startsWith('audio/')) {
       setUploadError(`Unsupported file type: ${type}`)
       setTimeout(() => setUploadError(null), 4000)
       return
@@ -174,7 +174,7 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
           ref={fileInputRef}
           id="chat-file-upload"
           type="file"
-          accept="image/*,video/*"
+          accept="image/*,video/*,audio/*"
           style={{ display: 'none' }}
           onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }}
         />

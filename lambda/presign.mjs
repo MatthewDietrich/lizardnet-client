@@ -19,6 +19,13 @@ const ALLOWED_TYPES = {
   'video/webm':  'webm',
   'video/ogg':   'ogv',
   'video/quicktime': 'mov',
+  'audio/mpeg':  'mp3',
+  'audio/ogg':   'ogg',
+  'audio/wav':   'wav',
+  'audio/flac':  'flac',
+  'audio/aac':   'aac',
+  'audio/mp4':   'm4a',
+  'audio/webm':  'weba',
 }
 
 const cors = {

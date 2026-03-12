@@ -25,6 +25,13 @@ function isVideoUrl(url: string): boolean {
   } catch { return false }
 }
 
+function isAudioUrl(url: string): boolean {
+  try {
+    const path = new URL(url).pathname.toLowerCase()
+    return /\.(mp3|ogg|wav|flac|aac|m4a|weba)$/.test(path)
+  } catch { return false }
+}
+
 function isS3Url(url: string): boolean {
   try {
     return new URL(url).href.startsWith(BUCKET_URL)
@@ -131,7 +138,11 @@ export function parseIrc(text: string): ReactNode[] {
           </CollapseEmbed>
         )
       }
-      if (isS3Url(parts[j]) && isVideoUrl(parts[j])) {
+      if (isS3Url(parts[j]) && isAudioUrl(parts[j])) {
+        nodes.push(
+          <audio key={key++} controls src={parts[j]} style={{ display: 'block', maxWidth: 360, marginTop: 4 }} />
+        )
+      } else if (isS3Url(parts[j]) && isVideoUrl(parts[j])) {
         nodes.push(<InlineVideo key={key++} src={parts[j]} />)
       } else if (isS3Url(parts[j]) && isImageUrl(parts[j])) {
         nodes.push(<InlineImage key={key++} src={parts[j]} />)
