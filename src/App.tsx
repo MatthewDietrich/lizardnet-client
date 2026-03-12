@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import lizardIcon from './assets/lizard_icon.svg'
 import { useIrcClient } from './hooks/useIrcClient'
+import { useSettings } from './hooks/useSettings'
 import ConnectModal from './components/ConnectModal'
 import AdminConsole from './components/AdminConsole'
+import SettingsConsole from './components/SettingsConsole'
 import UserMenu from './components/UserMenu'
 import TopicBar from './components/TopicBar'
 import MessageList from './components/MessageList'
@@ -12,7 +14,8 @@ import ChangeNickPopup from './components/ChangeNickPopup'
 import PmTabs from './components/PmTabs'
 
 export default function App() {
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper } = useIrcClient()
+  const { settings, setSetting } = useSettings()
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper } = useIrcClient(settings)
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -22,8 +25,8 @@ export default function App() {
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
   const [showConnectModal, setShowConnectModal] = useState(true)
   const [showAdminConsole, setShowAdminConsole] = useState(false)
+  const [showSettingsConsole, setShowSettingsConsole] = useState(false)
   const [showNickPopup, setShowNickPopup] = useState(false)
-  const [showThemePanel, setShowThemePanel] = useState(false)
   const [activeTab, setActiveTab] = useState('#chat')
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme') as 'dark' | 'light') ?? 'dark')
 
@@ -161,34 +164,12 @@ export default function App() {
         <div className="ms-auto d-flex align-items-center gap-2" style={{ position: 'relative' }}>
           <button
             className="btn btn-sm btn-outline-secondary d-flex align-items-center"
-            onClick={() => setShowThemePanel(v => !v)}
-            title="Theme"
+            onClick={() => setShowSettingsConsole(true)}
+            title="Settings"
           >
-            <span className="material-icons" style={{ fontSize: 16 }}>palette</span>
+            <span className="material-icons" style={{ fontSize: 16 }}>settings</span>
           </button>
-          {showThemePanel && (
-            <div style={{
-              position: 'absolute', top: '100%', right: 0, marginTop: 6, zIndex: 200,
-              background: 'var(--c-surface)', border: '1px solid var(--c-border)',
-              borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 130,
-            }}>
-              {(['dark', 'light'] as const).map(t => (
-                <button
-                  key={t}
-                  className="btn btn-sm"
-                  onClick={() => { setTheme(t); setShowThemePanel(false) }}
-                  style={{
-                    textAlign: 'left',
-                    background: theme === t ? 'rgba(var(--c-primary-rgb), 0.12)' : 'transparent',
-                    border: '1px solid ' + (theme === t ? 'var(--c-primary)' : 'var(--c-border)'),
-                    color: 'var(--c-primary)',
-                  }}
-                >
-                  {t === 'dark' ? '🌙 Dark' : '☀️ Light'}
-                </button>
-              ))}
-            </div>
-          )}
+
           <button
             className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
             onClick={() => connected ? setShowNickPopup(true) : setShowConnectModal(true)}
@@ -247,6 +228,16 @@ export default function App() {
           onClose={() => setShowAdminConsole(false)}
           bannedUsers={bannedUsers}
           onUnban={unban}
+        />
+      )}
+
+      {showSettingsConsole && (
+        <SettingsConsole
+          onClose={() => setShowSettingsConsole(false)}
+          settings={settings}
+          onChangeSetting={setSetting}
+          theme={theme}
+          onChangeTheme={setTheme}
         />
       )}
 

@@ -2,15 +2,23 @@ import { useState, useRef, useEffect } from 'react'
 import IRC from 'irc-framework'
 import type { Message } from '../types'
 import notificationSrc from '../assets/notification.wav'
+import type { Settings } from './useSettings'
 
 const notificationAudio = new Audio(notificationSrc)
+
+export function playNotificationSound() {
+  notificationAudio.currentTime = 0
+  notificationAudio.play().catch(err => console.warn('Notification sound blocked:', err))
+}
 
 const HOST = 'irc.lizard.fun'
 const PORT = 7003
 
 export type ConnStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
 
-export function useIrcClient() {
+export function useIrcClient(settings: Settings) {
+  const settingsRef = useRef(settings)
+  useEffect(() => { settingsRef.current = settings }, [settings])
   const [nick, setNick] = useState('')
   const nickRef = useRef('')
   const [connected, setConnected] = useState(false)
@@ -122,9 +130,15 @@ export function useIrcClient() {
       from !== nickRef.current &&
       new RegExp(`\\b${escapeRegex(nickRef.current)}\\b`, 'i').test(text)
     if (isMention) {
-      notificationAudio.currentTime = 0
-      notificationAudio.play().catch(() => {})
-      if (!focusedRef.current) setUnreadCount(n => n + 1)
+      if (settingsRef.current.soundMentions) {
+        playNotificationSound()
+      }
+      if (!focusedRef.current) {
+        setUnreadCount(n => n + 1)
+        if (settingsRef.current.desktopNotifications && Notification.permission === 'granted') {
+          new Notification(`${from} mentioned you`, { body: text, silent: true })
+        }
+      }
     }
     setMessages(prev => [...prev, { from, text, ts: ts ?? new Date(), kind }])
   }
@@ -160,9 +174,15 @@ export function useIrcClient() {
       return next
     })
     if (isIncoming && !(focusedRef.current && activePmPeerRef.current?.toLowerCase() === peer.toLowerCase())) {
-      notificationAudio.currentTime = 0
-      notificationAudio.play().catch(() => {})
-      if (!focusedRef.current) setUnreadCount(n => n + 1)
+      if (settingsRef.current.soundPm) {
+        playNotificationSound()
+      }
+      if (!focusedRef.current) {
+        setUnreadCount(n => n + 1)
+        if (settingsRef.current.desktopNotifications && Notification.permission === 'granted') {
+          new Notification(`PM from ${from}`, { body: text, silent: true })
+        }
+      }
       setPmUnread(prev => {
         const key = resolveKey(prev, peer)
         const next = new Map(prev)
