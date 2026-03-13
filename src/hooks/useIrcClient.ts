@@ -1,28 +1,25 @@
 import { useState, useRef, useEffect } from 'react'
 import IRC from 'irc-framework'
 import type { Message } from '../types'
-import notificationSrc from '../assets/notification.wav'
 import type { Settings } from './useSettings'
+import { playNotificationSound } from '../lib/notification'
+import { encryptCreds, decryptCreds } from '../lib/credentials'
+import { useReconnect } from './useReconnect'
+import { usePmConversations } from './usePmConversations'
 
-const notificationAudio = new Audio(notificationSrc)
-
-export function playNotificationSound() {
-  notificationAudio.currentTime = 0
-  notificationAudio.play().catch(err => console.warn('Notification sound blocked:', err))
-}
+export type { ConnStatus } from './useReconnect'
 
 const HOST = 'irc.lizard.fun'
 const PORT = 7003
-
-export type ConnStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
+const RATE_LIMIT = { messages: 5, windowMs: 4000 }
 
 export function useIrcClient(settings: Settings) {
   const settingsRef = useRef(settings)
   useEffect(() => { settingsRef.current = settings }, [settings])
+
   const [nick, setNick] = useState('')
   const nickRef = useRef('')
   const [connected, setConnected] = useState(false)
-  const [connStatus, setConnStatus] = useState<ConnStatus>('disconnected')
   const [isOper, setIsOper] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [users, setUsers] = useState<string[]>([])
@@ -33,67 +30,33 @@ export function useIrcClient(settings: Settings) {
   const [topic, setTopicState] = useState('')
   const [unreadCount, setUnreadCount] = useState(0)
   const [awayUsers, setAwayUsers] = useState<Set<string>>(new Set())
-  const [pmConversations, setPmConversations] = useState<Map<string, Message[]>>(new Map())
-  const [pmUnread, setPmUnread] = useState<Map<string, number>>(new Map())
-  const [pmPeerRename, setPmPeerRename] = useState<{ from: string; to: string } | null>(null)
 
-  function escapeRegex(s: string) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
-  function sanitize(s: string) { return s.replace(/[\r\n]/g, '') }
-
-  const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
-  type EncryptedCreds = { nick: string; key: CryptoKey; iv: Uint8Array<ArrayBuffer>; ciphertext: ArrayBuffer }
-  const credentialsRef = useRef<EncryptedCreds | null>(null)
-
-  async function encryptCreds(nick: string, password: string): Promise<EncryptedCreds> {
-    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
-    const iv = crypto.getRandomValues(new Uint8Array(12)) as Uint8Array<ArrayBuffer>
-    const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(password))
-    return { nick, key, iv, ciphertext }
-  }
-
-  async function decryptCreds(enc: EncryptedCreds): Promise<string> {
-    const buf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: enc.iv }, enc.key, enc.ciphertext)
-    return new TextDecoder().decode(buf)
-  }
-  const sendTimestampsRef = useRef<number[]>([])
-  const RATE_LIMIT = { messages: 5, windowMs: 4000 }
-
-  const manualDisconnectRef = useRef(false)
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const reconnectDelayRef = useRef(2000)
   const focusedRef = useRef(document.hasFocus())
-  const activePmPeerRef = useRef<string | null>(null)
-  const connStatusRef = useRef<ConnStatus>('disconnected')
+  const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
+  const credentialsRef = useRef<Awaited<ReturnType<typeof encryptCreds>> | null>(null)
+  const sendTimestampsRef = useRef<number[]>([])
   const activeBatchesRef = useRef<Map<string, string>>(new Map())
   const pendingBansRef = useRef<Set<string>>(new Set())
   const silentWhoisRef = useRef<Set<string>>(new Set())
   const maskToNickRef = useRef<Map<string, string>>(new Map())
 
-  function setActivePmPeer(peer: string | null) {
-    activePmPeerRef.current = peer
-    if (peer && focusedRef.current) {
-      setPmUnread(prev => {
-        if (!prev.get(peer)) return prev
-        const next = new Map(prev)
-        next.delete(peer)
-        return next
-      })
-    }
-  }
+  function escapeRegex(s: string) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
+  function sanitize(s: string) { return s.replace(/[\r\n]/g, '') }
+
+  const { connStatus, setConnStatus, connStatusRef, manualDisconnectRef, schedule, cancel: cancelReconnect, resetDelay } = useReconnect()
+
+  const {
+    pmConversations, pmUnread, pmPeerRename,
+    setActivePmPeer, addPmMessage, addActiveEvent,
+    openPmConversation, closePmConversation, clearPmUnread, clearActivePeerUnread,
+    handlePeerRename, redactInPmConversations,
+  } = usePmConversations({ focusedRef, settingsRef, nickRef, onChannelUnread: () => setUnreadCount(n => n + 1) })
 
   useEffect(() => {
     function onFocus() {
       focusedRef.current = true
       setUnreadCount(0)
-      const peer = activePmPeerRef.current
-      if (peer) {
-        setPmUnread(prev => {
-          if (!prev.get(peer)) return prev
-          const next = new Map(prev)
-          next.delete(peer)
-          return next
-        })
-      }
+      clearActivePeerUnread()
     }
     function onBlur() { focusedRef.current = false }
     window.addEventListener('focus', onFocus)
@@ -102,26 +65,13 @@ export function useIrcClient(settings: Settings) {
   }, [])
 
   useEffect(() => {
-    connStatusRef.current = connStatus
-  }, [connStatus])
-
-  useEffect(() => {
     function onVisibilityChange() {
       if (document.hidden) return
-      // Page became visible — check if we need to reconnect
-      const status = connStatusRef.current
       const creds = credentialsRef.current
-      if (!creds) return
-
-      if (status === 'reconnecting') {
-        // Cancel backoff timer and reconnect immediately
-        if (reconnectTimerRef.current) {
-          clearTimeout(reconnectTimerRef.current)
-          reconnectTimerRef.current = null
-        }
-        reconnectDelayRef.current = 2000
-        decryptCreds(creds).then(pw => connectCore(creds.nick, pw, true))
-      }
+      if (!creds || connStatusRef.current !== 'reconnecting') return
+      cancelReconnect()
+      resetDelay()
+      decryptCreds(creds).then(pw => connectCore(creds.nick, pw, true))
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
@@ -133,9 +83,7 @@ export function useIrcClient(settings: Settings) {
       from !== nickRef.current &&
       new RegExp(`\\b${escapeRegex(nickRef.current)}\\b`, 'i').test(text)
     if (isMention) {
-      if (settingsRef.current.soundMentions) {
-        playNotificationSound()
-      }
+      if (settingsRef.current.soundMentions) playNotificationSound()
       if (!focusedRef.current) {
         setUnreadCount(n => n + 1)
         if (settingsRef.current.desktopNotifications && Notification.permission === 'granted') {
@@ -147,52 +95,7 @@ export function useIrcClient(settings: Settings) {
   }
 
   function addActive(text: string) {
-    const peer = activePmPeerRef.current
-    if (peer) {
-      setPmConversations(prev => {
-        const key = resolveKey(prev, peer)
-        const next = new Map(prev)
-        next.set(key, [...(next.get(key) ?? []), { from: '*', text, ts: new Date(), kind: 'event' as const }])
-        return next
-      })
-    } else {
-      addMessage('*', text, 'event')
-    }
-  }
-
-  function resolveKey(map: Map<string, unknown>, peer: string): string {
-    const lower = peer.toLowerCase()
-    for (const key of map.keys()) {
-      if (key.toLowerCase() === lower) return key
-    }
-    return peer
-  }
-
-  function addPmMessage(peer: string, from: string, text: string, isIncoming: boolean, kind: Message['kind'] = 'chat') {
-    const msg: Message = { from, text, ts: new Date(), kind }
-    setPmConversations(prev => {
-      const key = resolveKey(prev, peer)
-      const next = new Map(prev)
-      next.set(key, [...(next.get(key) ?? []), msg])
-      return next
-    })
-    if (isIncoming && !(focusedRef.current && activePmPeerRef.current?.toLowerCase() === peer.toLowerCase())) {
-      if (settingsRef.current.soundPm) {
-        playNotificationSound()
-      }
-      if (!focusedRef.current) {
-        setUnreadCount(n => n + 1)
-        if (settingsRef.current.desktopNotifications && Notification.permission === 'granted') {
-          new Notification(`PM from ${from}`, { body: text, silent: true })
-        }
-      }
-      setPmUnread(prev => {
-        const key = resolveKey(prev, peer)
-        const next = new Map(prev)
-        next.set(key, (next.get(key) ?? 0) + 1)
-        return next
-      })
-    }
+    addActiveEvent(text, () => addMessage('*', text, 'event'))
   }
 
   function attachListeners(client: InstanceType<typeof IRC.Client>, chosenNick: string) {
@@ -219,7 +122,6 @@ export function useIrcClient(settings: Settings) {
       const e = event as { line?: string; from_server?: boolean }
       if (!e.from_server || !e.line) return
 
-      // Parse `@tags :prefix cmd params...` or `:prefix cmd params...`
       let rest = e.line
       if (rest.startsWith('@')) rest = rest.slice(rest.indexOf(' ') + 1)
       if (rest.startsWith(':')) rest = rest.slice(rest.indexOf(' ') + 1)
@@ -233,9 +135,7 @@ export function useIrcClient(settings: Settings) {
         if (parts[i]) p.push(parts[i])
       }
 
-      if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) {
-        setTopicState(p[2])
-      }
+      if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2])
       if (cmd === 'TOPIC' && p[0]?.toLowerCase() === '#chat' && p[1] !== undefined) {
         setTopicState(p[1])
         addMessage('*', `Topic changed to: ${p[1]}`, 'event')
@@ -252,16 +152,13 @@ export function useIrcClient(settings: Settings) {
       if (cmd === '464') { addActive('OPER failed: incorrect password.') }
       if (cmd === '491') { addActive('OPER failed: no O-lines for your host.') }
       if (cmd === '311' && p[1] && pendingBansRef.current.has(p[1])) {
-        // RPL_WHOISUSER: p[0]=ournick p[1]=nick p[2]=user p[3]=host
         const mask = `*!${p[2]}@${p[3]}`
         pendingBansRef.current.delete(p[1])
         maskToNickRef.current.set(mask, p[1])
         clientRef.current?.raw(`MODE #chat +b ${mask}`)
         clientRef.current?.raw(`KICK #chat ${p[1]}`)
       }
-      if (cmd === '474' || cmd === '465') {
-        addActive('You have been banned.')
-      }
+      if (cmd === '474' || cmd === '465') addActive('You have been banned.')
       if (cmd === '367' && p[1]?.toLowerCase() === '#chat' && p[2]) {
         setBannedUsers(prev => prev.includes(p[2]) ? prev : [...prev, p[2]])
       }
@@ -272,9 +169,7 @@ export function useIrcClient(settings: Settings) {
         } else if (ref?.startsWith('-')) {
           const type = activeBatchesRef.current.get(ref.slice(1))
           activeBatchesRef.current.delete(ref.slice(1))
-          if (type === 'chathistory') {
-            addMessage('*', '─── history above ───', 'event')
-          }
+          if (type === 'chathistory') addMessage('*', '─── history above ───', 'event')
         }
       }
     })
@@ -289,11 +184,7 @@ export function useIrcClient(settings: Settings) {
 
     client.on('mode', (event: unknown) => {
       const e = event as { target?: string; modes?: Array<{ mode: string; param?: string }> }
-      // Server oper: user mode +o directly on the nick
-      if (e.target === chosenNick && e.modes?.some(m => m.mode === '+o')) {
-        setIsOper(true)
-      }
-      // Channel oper: +o/-o on the nick within #chat
+      if (e.target === chosenNick && e.modes?.some(m => m.mode === '+o')) setIsOper(true)
       if (e.target?.toLowerCase() === '#chat') {
         for (const m of e.modes ?? []) {
           if (m.mode === '+o' && m.param) {
@@ -306,26 +197,19 @@ export function useIrcClient(settings: Settings) {
             if (m.param === chosenNick) setIsOper(false)
             addMessage('*', `${m.param} is no longer a moderator`, 'event')
           }
-        }
-      }
-      if (e.target?.toLowerCase() === '#chat') {
-        for (const m of e.modes ?? []) {
           if (m.mode === '+b' && m.param) {
             setBannedUsers(prev => prev.includes(m.param!) ? prev : [...prev, m.param!])
-            const nick = maskToNickRef.current.get(m.param!) ?? m.param!
-            addMessage('*', `${nick} has been banned`, 'event')
+            addMessage('*', `${maskToNickRef.current.get(m.param!) ?? m.param!} has been banned`, 'event')
           }
           if (m.mode === '-b' && m.param) {
             setBannedUsers(prev => prev.filter(u => u !== m.param))
-            const nick = maskToNickRef.current.get(m.param!) ?? m.param!
+            addMessage('*', `${maskToNickRef.current.get(m.param!) ?? m.param!} has been unbanned`, 'event')
             maskToNickRef.current.delete(m.param!)
-            addMessage('*', `${nick} has been unbanned`, 'event')
           }
         }
       }
     })
 
-    // Track away status for self and other users via irc-framework's native away/back events
     client.on('away', (event: unknown) => {
       const e = event as { nick: string }
       setAwayUsers(prev => new Set([...prev, e.nick]))
@@ -382,24 +266,7 @@ export function useIrcClient(settings: Settings) {
         if (!prev.has(e.nick)) return prev
         const s = new Set(prev); s.delete(e.nick); s.add(e.new_nick); return s
       })
-      setPmConversations(prev => {
-        if (!prev.has(e.nick)) return prev
-        const next = new Map(prev)
-        next.set(e.new_nick, next.get(e.nick)!)
-        next.delete(e.nick)
-        return next
-      })
-      setPmUnread(prev => {
-        if (!prev.has(e.nick)) return prev
-        const next = new Map(prev)
-        next.set(e.new_nick, next.get(e.nick)!)
-        next.delete(e.nick)
-        return next
-      })
-      if (activePmPeerRef.current === e.nick) {
-        activePmPeerRef.current = e.new_nick
-        setPmPeerRename({ from: e.nick, to: e.new_nick })
-      }
+      handlePeerRename(e.nick, e.new_nick)
       addMessage('*', `${e.nick} is now known as ${e.new_nick}`, 'event')
     })
 
@@ -408,11 +275,8 @@ export function useIrcClient(settings: Settings) {
       let text = e.message ?? e.notice ?? ''
       if (!text) return
       if (e.nick?.toLowerCase() === 'nickserv') {
-        // Drop "Last login from: <user>@<host> on <date>." lines
         if (/^Last login from:/i.test(text)) return
-        // Drop network welcome/service intro messages
         if (/^Welcome to /i.test(text)) return
-        // Replace "/msg NickServ IDENTIFY [nick] <password>" with "/identify <password>"
         text = text.replace(/\/msg NickServ IDENTIFY(?:\s+\S+)?\s+(\S+)/gi, '/identify $1')
         addMessage('NickServ', text, 'event')
       }
@@ -426,7 +290,6 @@ export function useIrcClient(settings: Settings) {
       setUsers([])
       setOps([])
       setBannedUsers([])
-
       setAwayUsers(new Set())
       if (manualDisconnectRef.current) {
         manualDisconnectRef.current = false
@@ -434,48 +297,34 @@ export function useIrcClient(settings: Settings) {
         addMessage('*', 'Disconnected.', 'event')
         return
       }
-
-      // Unexpected disconnect — schedule reconnect with exponential backoff
-      const delay = reconnectDelayRef.current
-      reconnectDelayRef.current = Math.min(delay * 2, 30000)
-      setConnStatus('reconnecting')
-      addMessage('*', `Disconnected. Reconnecting in ${delay / 1000}s…`, 'event')
-      reconnectTimerRef.current = setTimeout(() => {
+      const delay = schedule(() => {
         const enc = credentialsRef.current
         if (enc) decryptCreds(enc).then(pw => connectCore(enc.nick, pw, true))
-      }, delay)
+      })
+      setConnStatus('reconnecting')
+      addMessage('*', `Disconnected. Reconnecting in ${delay / 1000}s…`, 'event')
     })
 
-    client.on('error', (err) => {
-      addMessage('!', err.message)
-    })
+    client.on('error', (err) => { addMessage('!', err.message) })
   }
 
   function connectCore(chosenNick: string, password: string, isReconnect: boolean) {
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current)
-      reconnectTimerRef.current = null
-    }
-
+    cancelReconnect()
     const client = new IRC.Client()
     client.connect({ host: HOST, port: PORT, nick: chosenNick, tls: true })
-
     client.on('registered', () => {
       setConnected(true)
       setConnStatus('connected')
-      reconnectDelayRef.current = 2000 // reset backoff on successful connect
+      resetDelay()
       if (isReconnect) {
         addMessage('*', 'Reconnected.', 'event')
       } else {
         addMessage('*', 'Connected')
         addMessage('*', `You are now logged in as ${chosenNick}`)
       }
-      if (password) {
-        client.say('NickServ', `IDENTIFY ${password}`)
-      }
+      if (password) client.say('NickServ', `IDENTIFY ${password}`)
       client.join('#chat')
     })
-
     attachListeners(client, chosenNick)
     clientRef.current = client
   }
@@ -488,7 +337,7 @@ export function useIrcClient(settings: Settings) {
     setNick(normalizedNick)
     nickRef.current = normalizedNick
     credentialsRef.current = await encryptCreds(normalizedNick, password)
-    reconnectDelayRef.current = 2000
+    resetDelay()
     setConnStatus('connecting')
     connectCore(normalizedNick, password, false)
   }
@@ -498,32 +347,26 @@ export function useIrcClient(settings: Settings) {
     nickRef.current = chosenNick
     credentialsRef.current = await encryptCreds(chosenNick, password)
     manualDisconnectRef.current = false
-    reconnectDelayRef.current = 2000
+    resetDelay()
     setConnStatus('connecting')
-
     const client = new IRC.Client()
     client.connect({ host: HOST, port: PORT, nick: chosenNick, tls: true })
-
     client.on('registered', () => {
       setConnected(true)
       setConnStatus('connected')
-      reconnectDelayRef.current = 2000
+      resetDelay()
       addMessage('*', 'Connected')
       addMessage('*', `You are now logged in as ${chosenNick}`)
       client.say('NickServ', `REGISTER ${password} ${email}`)
       client.join('#chat')
     })
-
     attachListeners(client, chosenNick)
     clientRef.current = client
   }
 
   function disconnect() {
     manualDisconnectRef.current = true
-    if (reconnectTimerRef.current) {
-      clearTimeout(reconnectTimerRef.current)
-      reconnectTimerRef.current = null
-    }
+    cancelReconnect()
     clientRef.current?.quit('Goodbye')
     clientRef.current = null
     setConnected(false)
@@ -536,102 +379,29 @@ export function useIrcClient(settings: Settings) {
     addMessage('*', 'Disconnected.', 'event')
   }
 
-  function sendMessage(text: string) {
-    if (!text.trim() || !clientRef.current) return
+  function checkRateLimit(): boolean {
     const now = Date.now()
     sendTimestampsRef.current = sendTimestampsRef.current.filter(t => now - t < RATE_LIMIT.windowMs)
     if (sendTimestampsRef.current.length >= RATE_LIMIT.messages) {
       addActive(`Slow down — max ${RATE_LIMIT.messages} messages per ${RATE_LIMIT.windowMs / 1000}s.`)
-      return
+      return false
     }
     sendTimestampsRef.current.push(now)
+    return true
+  }
+
+  function sendMessage(text: string) {
+    if (!text.trim() || !clientRef.current) return
+    if (!checkRateLimit()) return
     clientRef.current.say('#chat', text)
     addMessage(nick, text)
   }
 
   function sendPrivMsg(target: string, text: string) {
     if (!text.trim() || !clientRef.current) return
-    const now = Date.now()
-    sendTimestampsRef.current = sendTimestampsRef.current.filter(t => now - t < RATE_LIMIT.windowMs)
-    if (sendTimestampsRef.current.length >= RATE_LIMIT.messages) {
-      addActive(`Slow down — max ${RATE_LIMIT.messages} messages per ${RATE_LIMIT.windowMs / 1000}s.`)
-      return
-    }
-    sendTimestampsRef.current.push(now)
+    if (!checkRateLimit()) return
     clientRef.current.say(target, text)
     addPmMessage(target, nickRef.current, text, false)
-  }
-
-  function clearPmUnread(peer: string) {
-    setPmUnread(prev => {
-      if (!prev.get(peer)) return prev
-      const next = new Map(prev)
-      next.delete(peer)
-      return next
-    })
-  }
-
-  function openPmConversation(peer: string) {
-    setPmConversations(prev => {
-      if (prev.has(peer)) return prev
-      const next = new Map(prev)
-      next.set(peer, [])
-      return next
-    })
-  }
-
-  function closePmConversation(peer: string) {
-    setPmConversations(prev => {
-      const next = new Map(prev)
-      next.delete(peer)
-      return next
-    })
-    setPmUnread(prev => {
-      if (!prev.has(peer)) return prev
-      const next = new Map(prev)
-      next.delete(peer)
-      return next
-    })
-  }
-
-  function whois(target: string) {
-    clientRef.current?.raw(`WHOIS ${sanitize(target)}`)
-  }
-
-  function kick(target: string) {
-    clientRef.current?.raw(`KICK #chat ${sanitize(target)}`)
-  }
-
-  function ban(target: string) {
-    const safe = sanitize(target)
-    pendingBansRef.current.add(safe)
-    silentWhoisRef.current.add(safe)
-    clientRef.current?.raw(`WHOIS ${safe}`)
-  }
-
-  function unban(mask: string) {
-    clientRef.current?.raw(`MODE #chat -b ${sanitize(mask)}`)
-  }
-
-  function op(target: string) {
-    clientRef.current?.raw(`MODE #chat +o ${sanitize(target)}`)
-  }
-
-  function deop(target: string) {
-    clientRef.current?.raw(`MODE #chat -o ${sanitize(target)}`)
-  }
-
-  function changeTopic(newTopic: string) {
-    clientRef.current?.raw(`TOPIC #chat :${sanitize(newTopic)}`)
-  }
-
-  function changeNick(newNick: string) {
-    if (!clientRef.current) return
-    clientRef.current.raw(`NICK ${sanitize(newNick).replace(' ', '_')}`)
-  }
-
-  function sayNickServ(text: string) {
-    clientRef.current?.say('NickServ', text)
   }
 
   function sendAction(text: string, target = '#chat') {
@@ -644,35 +414,37 @@ export function useIrcClient(settings: Settings) {
     }
   }
 
-  function sendMediaDelete(url: string) {
-    clientRef.current?.raw(`PRIVMSG #chat :MEDIADELETE ${sanitize(url)}`)
-  }
-
   function redactMediaUrl(url: string) {
     const replace = (text: string) => text.replace(url, '[media deleted]')
     setMessages(prev => prev.map(m => m.text.includes(url) ? { ...m, text: replace(m.text) } : m))
-    setPmConversations(prev => {
-      let changed = false
-      const next = new Map(prev)
-      for (const [peer, msgs] of next) {
-        const updated = msgs.map(m => m.text.includes(url) ? { ...m, text: replace(m.text) } : m)
-        if (updated.some((m, i) => m !== msgs[i])) { next.set(peer, updated); changed = true }
-      }
-      return changed ? next : prev
-    })
+    redactInPmConversations(url, replace)
   }
 
-  function setAway(message: string) {
-    clientRef.current?.raw(`AWAY :${sanitize(message)}`)
+  function whois(target: string) { clientRef.current?.raw(`WHOIS ${sanitize(target)}`) }
+  function kick(target: string) { clientRef.current?.raw(`KICK #chat ${sanitize(target)}`) }
+  function ban(target: string) {
+    const safe = sanitize(target)
+    pendingBansRef.current.add(safe)
+    silentWhoisRef.current.add(safe)
+    clientRef.current?.raw(`WHOIS ${safe}`)
   }
+  function unban(mask: string) { clientRef.current?.raw(`MODE #chat -b ${sanitize(mask)}`) }
+  function op(target: string) { clientRef.current?.raw(`MODE #chat +o ${sanitize(target)}`) }
+  function deop(target: string) { clientRef.current?.raw(`MODE #chat -o ${sanitize(target)}`) }
+  function changeTopic(newTopic: string) { clientRef.current?.raw(`TOPIC #chat :${sanitize(newTopic)}`) }
+  function changeNick(newNick: string) { clientRef.current?.raw(`NICK ${sanitize(newNick).replace(' ', '_')}`) }
+  function sayNickServ(text: string) { clientRef.current?.say('NickServ', text) }
+  function setAway(message: string) { clientRef.current?.raw(`AWAY :${sanitize(message)}`) }
+  function setBack() { clientRef.current?.raw('AWAY') }
+  function sendOper(name: string, password: string) { clientRef.current?.raw(`OPER ${sanitize(name)} ${sanitize(password)}`) }
+  function sendMediaDelete(url: string) { clientRef.current?.raw(`PRIVMSG #chat :MEDIADELETE ${sanitize(url)}`) }
 
-  function setBack() {
-    clientRef.current?.raw('AWAY')
+  return {
+    nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers,
+    pmConversations, pmUnread, pmPeerRename,
+    connect, register, disconnect, sendMessage, sendPrivMsg, sendAction, sendOper, sendMediaDelete,
+    whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ,
+    addMessage, addActive, setAway, setBack, redactMediaUrl,
+    clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer,
   }
-
-  function sendOper(name: string, password: string) {
-    clientRef.current?.raw(`OPER ${sanitize(name)} ${sanitize(password)}`)
-  }
-
-  return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete }
 }

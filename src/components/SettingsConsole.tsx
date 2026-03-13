@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Settings } from '../hooks/useSettings'
-import { playNotificationSound } from '../hooks/useIrcClient'
+import { playNotificationSound } from '../lib/notification'
 
 interface Props {
   onClose: () => void
