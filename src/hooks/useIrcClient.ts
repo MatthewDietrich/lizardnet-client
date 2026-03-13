@@ -51,7 +51,7 @@ export function useIrcClient(settings: Settings) {
     setActivePmPeer, addPmMessage, addActiveEvent,
     openPmConversation, closePmConversation, clearPmUnread, clearActivePeerUnread,
     handlePeerRename, redactInPmConversations,
-  } = usePmConversations({ focusedRef, settingsRef, nickRef, onChannelUnread: () => setUnreadCount(n => n + 1) })
+  } = usePmConversations({ focusedRef, settingsRef, onChannelUnread: () => setUnreadCount(n => n + 1) })
 
   useEffect(() => {
     function onFocus() {

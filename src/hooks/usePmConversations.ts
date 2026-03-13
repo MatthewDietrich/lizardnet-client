@@ -22,11 +22,10 @@ function mapWithout<K, V>(map: Map<K, V>, key: K): Map<K, V> {
 interface Options {
   focusedRef: React.MutableRefObject<boolean>
   settingsRef: React.MutableRefObject<Settings>
-  nickRef: React.MutableRefObject<string>
   onChannelUnread: () => void
 }
 
-export function usePmConversations({ focusedRef, settingsRef, nickRef, onChannelUnread }: Options) {
+export function usePmConversations({ focusedRef, settingsRef, onChannelUnread }: Options) {
   const [pmConversations, setPmConversations] = useState<Map<string, Message[]>>(new Map())
   const [pmUnread, setPmUnread] = useState<Map<string, number>>(new Map())
   const [pmPeerRename, setPmPeerRename] = useState<{ from: string; to: string } | null>(null)
