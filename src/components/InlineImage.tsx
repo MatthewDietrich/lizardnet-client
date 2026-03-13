@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 export function InlineImage({ src }: { src: string }) {
   const [expanded, setExpanded] = useState(false)
+  const [error, setError] = useState(false)
   const alt = 'User-uploaded image'
   const touchStartY = useRef(0)
   const closeBtnRef = useRef<HTMLButtonElement>(null)
@@ -22,6 +23,8 @@ export function InlineImage({ src }: { src: string }) {
     if (e.key === 'Tab') { e.preventDefault() } // single focusable element — keep focus on close button
   }
 
+  if (error) return <span className="text-muted fst-italic">[media unavailable]</span>
+
   return (
     <>
       <div style={{ marginTop: '0.5em', marginBottom: '0.5em' }}>
@@ -34,6 +37,7 @@ export function InlineImage({ src }: { src: string }) {
           <img
             src={src}
             alt={alt}
+            onError={() => setError(true)}
             style={{ maxWidth: 'min(400px, 100%)', maxHeight: 300, display: 'block', borderRadius: 8 }}
           />
         </button>

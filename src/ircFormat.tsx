@@ -5,6 +5,7 @@ import { BlueskyEmbed, getBlueskyUrl } from './components/BlueskyEmbed'
 import { InlineImage } from './components/InlineImage'
 import { CollapseEmbed } from './components/CollapseEmbed'
 import { InlineVideo } from './components/InlineVideo'
+import { InlineAudio } from './components/InlineAudio'
 import { BUCKET_URL } from './lib/s3Upload'
 
 function replaceEmojis(text: string): string {
@@ -166,8 +167,8 @@ export function parseIrc(text: string, onDeleteMedia?: (url: string) => void): R
         )
       }
       if (isS3Url(parts[j]) && isAudioUrl(parts[j])) {
-        const node = <audio controls src={parts[j]} style={{ display: 'block', maxWidth: 360, marginTop: 4 }} />
-        nodes.push(onDeleteMedia ? withDelete(node, parts[j], key++, onDeleteMedia) : <div key={key++}>{node}</div>)
+        const node = <InlineAudio src={parts[j]} />
+        nodes.push(onDeleteMedia ? withDelete(node, parts[j], key++, onDeleteMedia) : <InlineAudio key={key++} src={parts[j]} />)
       } else if (isS3Url(parts[j]) && isVideoUrl(parts[j])) {
         const node = <InlineVideo src={parts[j]} />
         nodes.push(onDeleteMedia ? withDelete(node, parts[j], key++, onDeleteMedia) : <InlineVideo key={key++} src={parts[j]} />)
