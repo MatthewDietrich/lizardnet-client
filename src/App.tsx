@@ -13,6 +13,7 @@ import UserList from './components/UserList'
 import ChatInput, { type ChatInputHandle } from './components/ChatInput'
 import ChangeNickPopup from './components/ChangeNickPopup'
 import PmTabs from './components/PmTabs'
+import ErrorBoundary from './components/ErrorBoundary'
 
 export default function App() {
   const { settings, setSetting } = useSettings()
@@ -190,13 +191,15 @@ export default function App() {
       {connected && <TopicBar topic={topic} isOper={isOper} onChangeTopic={changeTopic} />}
 
       <div className="d-flex gap-3 flex-grow-1" style={{ minHeight: 0 }}>
-        <MessageList
-          messages={activeMessages}
-          nick={nick}
-          onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
-          canDeleteMedia={isOper || ops.includes(nick)}
-          onDeleteMedia={url => deleteFromS3(url).then(() => { redactMediaUrl(url); sendMediaDelete(url) }).catch(err => addActive(`Failed to delete: ${err.message}`))}
-        />
+        <ErrorBoundary>
+          <MessageList
+            messages={activeMessages}
+            nick={nick}
+            onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
+            canDeleteMedia={isOper || ops.includes(nick)}
+            onDeleteMedia={url => deleteFromS3(url).then(() => { redactMediaUrl(url); sendMediaDelete(url) }).catch(err => addActive(`Failed to delete: ${err.message}`))}
+          />
+        </ErrorBoundary>
         <UserList
           users={users}
           ops={ops}

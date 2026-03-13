@@ -12,6 +12,7 @@ export type { ConnStatus } from './useReconnect'
 const HOST = 'irc.lizard.fun'
 const PORT = 7003
 const RATE_LIMIT = { messages: 5, windowMs: 4000 }
+const MAX_MESSAGES = 2000
 
 export function useIrcClient(settings: Settings) {
   const settingsRef = useRef(settings)
@@ -91,14 +92,17 @@ export function useIrcClient(settings: Settings) {
         }
       }
     }
-    setMessages(prev => [...prev, { from, text, ts: ts ?? new Date(), kind }])
+    setMessages(prev => {
+      const next = [...prev, { from, text, ts: ts ?? new Date(), kind }]
+      return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next
+    })
   }
 
   function addActive(text: string) {
     addActiveEvent(text, () => addMessage('*', text, 'event'))
   }
 
-  function attachListeners(client: InstanceType<typeof IRC.Client>, chosenNick: string) {
+  function attachListeners(client: InstanceType<typeof IRC.Client>) {
     client.on('message', (event: unknown) => {
       const { nick: who, target, message, type, tags } = event as { nick: string; target: string; message: string; type: string; tags?: Record<string, string> }
       if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
@@ -184,17 +188,17 @@ export function useIrcClient(settings: Settings) {
 
     client.on('mode', (event: unknown) => {
       const e = event as { target?: string; modes?: Array<{ mode: string; param?: string }> }
-      if (e.target === chosenNick && e.modes?.some(m => m.mode === '+o')) setIsOper(true)
+      if (e.target === nickRef.current && e.modes?.some(m => m.mode === '+o')) setIsOper(true)
       if (e.target?.toLowerCase() === '#chat') {
         for (const m of e.modes ?? []) {
           if (m.mode === '+o' && m.param) {
             setOps(prev => prev.includes(m.param!) ? prev : [...prev, m.param!])
-            if (m.param === chosenNick) setIsOper(true)
+            if (m.param === nickRef.current) setIsOper(true)
             addMessage('*', `${m.param} is now a moderator`, 'event')
           }
           if (m.mode === '-o' && m.param) {
             setOps(prev => prev.filter(u => u !== m.param))
-            if (m.param === chosenNick) setIsOper(false)
+            if (m.param === nickRef.current) setIsOper(false)
             addMessage('*', `${m.param} is no longer a moderator`, 'event')
           }
           if (m.mode === '+b' && m.param) {
@@ -220,7 +224,7 @@ export function useIrcClient(settings: Settings) {
     })
 
     client.on('join', ({ nick: who, channel }) => {
-      if (who === chosenNick) return
+      if (who === nickRef.current) return
       if (channel.toLowerCase() !== '#chat') return
       if (who.toLowerCase() === 'chanserv') return
       setUsers(prev => prev.includes(who) ? prev : [...prev, who].sort((a, b) => a.localeCompare(b)))
@@ -253,7 +257,7 @@ export function useIrcClient(settings: Settings) {
       if (e.channel.toLowerCase() !== '#chat') return
       setUsers(e.users.map(u => u.nick).filter(n => n.toLowerCase() !== 'chanserv').sort((a, b) => a.localeCompare(b)))
       setOps(e.users.filter(u => u.modes.includes('o')).map(u => u.nick))
-      const self = e.users.find(u => u.nick === chosenNick)
+      const self = e.users.find(u => u.nick === nickRef.current)
       if (self?.modes.includes('o')) setIsOper(true)
     })
 
@@ -308,7 +312,7 @@ export function useIrcClient(settings: Settings) {
     client.on('error', (err) => { addMessage('!', err.message) })
   }
 
-  function connectCore(chosenNick: string, password: string, isReconnect: boolean) {
+  function connectCore(chosenNick: string, password: string, isReconnect: boolean, nickServCommand?: string) {
     cancelReconnect()
     const client = new IRC.Client()
     client.connect({ host: HOST, port: PORT, nick: chosenNick, tls: true })
@@ -322,10 +326,11 @@ export function useIrcClient(settings: Settings) {
         addMessage('*', 'Connected')
         addMessage('*', `You are now logged in as ${chosenNick}`)
       }
-      if (password) client.say('NickServ', `IDENTIFY ${password}`)
+      const cmd = nickServCommand ?? (password ? `IDENTIFY ${password}` : null)
+      if (cmd) client.say('NickServ', cmd)
       client.join('#chat')
     })
-    attachListeners(client, chosenNick)
+    attachListeners(client)
     clientRef.current = client
   }
 
@@ -333,7 +338,7 @@ export function useIrcClient(settings: Settings) {
     clientRef.current?.quit('Reconnecting')
     clientRef.current = null
     manualDisconnectRef.current = false
-    const normalizedNick = chosenNick.replace(' ', '_')
+    const normalizedNick = chosenNick.replace(/ /g, '_')
     setNick(normalizedNick)
     nickRef.current = normalizedNick
     credentialsRef.current = await encryptCreds(normalizedNick, password)
@@ -349,19 +354,7 @@ export function useIrcClient(settings: Settings) {
     manualDisconnectRef.current = false
     resetDelay()
     setConnStatus('connecting')
-    const client = new IRC.Client()
-    client.connect({ host: HOST, port: PORT, nick: chosenNick, tls: true })
-    client.on('registered', () => {
-      setConnected(true)
-      setConnStatus('connected')
-      resetDelay()
-      addMessage('*', 'Connected')
-      addMessage('*', `You are now logged in as ${chosenNick}`)
-      client.say('NickServ', `REGISTER ${password} ${email}`)
-      client.join('#chat')
-    })
-    attachListeners(client, chosenNick)
-    clientRef.current = client
+    connectCore(chosenNick, password, false, `REGISTER ${password} ${email}`)
   }
 
   function disconnect() {
@@ -432,7 +425,7 @@ export function useIrcClient(settings: Settings) {
   function op(target: string) { clientRef.current?.raw(`MODE #chat +o ${sanitize(target)}`) }
   function deop(target: string) { clientRef.current?.raw(`MODE #chat -o ${sanitize(target)}`) }
   function changeTopic(newTopic: string) { clientRef.current?.raw(`TOPIC #chat :${sanitize(newTopic)}`) }
-  function changeNick(newNick: string) { clientRef.current?.raw(`NICK ${sanitize(newNick).replace(' ', '_')}`) }
+  function changeNick(newNick: string) { clientRef.current?.raw(`NICK ${sanitize(newNick).replace(/ /g, '_')}`) }
   function sayNickServ(text: string) { clientRef.current?.say('NickServ', text) }
   function setAway(message: string) { clientRef.current?.raw(`AWAY :${sanitize(message)}`) }
   function setBack() { clientRef.current?.raw('AWAY') }

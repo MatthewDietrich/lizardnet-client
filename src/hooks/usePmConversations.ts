@@ -11,6 +11,14 @@ function resolveKey(map: Map<string, unknown>, peer: string): string {
   return peer
 }
 
+// Returns the same map if the key is absent, otherwise a clone with the key removed.
+function mapWithout<K, V>(map: Map<K, V>, key: K): Map<K, V> {
+  if (!map.has(key)) return map
+  const next = new Map(map)
+  next.delete(key)
+  return next
+}
+
 interface Options {
   focusedRef: React.MutableRefObject<boolean>
   settingsRef: React.MutableRefObject<Settings>
@@ -27,12 +35,7 @@ export function usePmConversations({ focusedRef, settingsRef, nickRef, onChannel
   function setActivePmPeer(peer: string | null) {
     activePmPeerRef.current = peer
     if (peer && focusedRef.current) {
-      setPmUnread(prev => {
-        if (!prev.get(peer)) return prev
-        const next = new Map(prev)
-        next.delete(peer)
-        return next
-      })
+      setPmUnread(prev => mapWithout(prev, peer))
     }
   }
 
@@ -90,28 +93,19 @@ export function usePmConversations({ focusedRef, settingsRef, nickRef, onChannel
   }
 
   function closePmConversation(peer: string) {
-    setPmConversations(prev => { const next = new Map(prev); next.delete(peer); return next })
-    setPmUnread(prev => {
-      if (!prev.has(peer)) return prev
-      const next = new Map(prev); next.delete(peer); return next
-    })
+    setPmConversations(prev => mapWithout(prev, peer))
+    setPmUnread(prev => mapWithout(prev, peer))
   }
 
   function clearPmUnread(peer: string) {
-    setPmUnread(prev => {
-      if (!prev.get(peer)) return prev
-      const next = new Map(prev); next.delete(peer); return next
-    })
+    setPmUnread(prev => mapWithout(prev, peer))
   }
 
   // Clear unread count for the currently active PM peer (called on window focus).
   function clearActivePeerUnread() {
     const peer = activePmPeerRef.current
     if (!peer) return
-    setPmUnread(prev => {
-      if (!prev.get(peer)) return prev
-      const next = new Map(prev); next.delete(peer); return next
-    })
+    setPmUnread(prev => mapWithout(prev, peer))
   }
 
   // Update PM state when a user changes their nick.

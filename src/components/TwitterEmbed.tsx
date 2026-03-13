@@ -6,19 +6,19 @@ declare global {
   }
 }
 
-export function getTwitterInfo(url: string): { username: string; statusId: string } | null {
+export function getTwitterInfo(url: string): { statusId: string } | null {
   try {
     const u = new URL(url)
     const host = u.hostname.replace(/^www\./, '')
     if (host === 'twitter.com' || host === 'x.com') {
       const m = u.pathname.match(/^\/([^/]+)\/status\/(\d+)/)
-      if (m) return { username: m[1], statusId: m[2] }
+      if (m) return { statusId: m[2] }
     }
   } catch { /* invalid url */ }
   return null
 }
 
-export function TwitterEmbed({ username, statusId }: { username: string; statusId: string }) {
+export function TwitterEmbed({ statusId }: { statusId: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const embeddedIdRef = useRef<string | null>(null)
 
@@ -46,7 +46,7 @@ export function TwitterEmbed({ username, statusId }: { username: string; statusI
       // Script tag exists but not loaded yet — wait for it
       document.getElementById('twitter-widgets-js')!.addEventListener('load', embed)
     }
-  }, [username, statusId])
+  }, [statusId])
 
   return <div ref={containerRef} style={{ marginTop: '0.5em', maxWidth: 400 }} />
 }
