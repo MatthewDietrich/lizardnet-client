@@ -6,7 +6,7 @@ const deleteButtonStyle: React.CSSProperties = {
   color: '#fff', cursor: 'pointer', padding: '2px 5px', lineHeight: 1,
 }
 
-export function InlineImage({ src, onDelete }: { src: string; onDelete?: (url: string) => void }) {
+export function InlineImage({ src, onDelete, onRedact }: { src: string; onDelete?: (url: string) => void; onRedact?: (url: string) => void }) {
   const [expanded, setExpanded] = useState(false)
   const [error, setError] = useState(false)
   const alt = 'User-uploaded image'
@@ -49,6 +49,9 @@ export function InlineImage({ src, onDelete }: { src: string; onDelete?: (url: s
         </button>
         {onDelete && <button onClick={() => { if (confirm('Delete this media permanently?')) onDelete(src) }} title="Delete media" style={deleteButtonStyle}>
           <span className="material-icons" style={{ fontSize: 13, verticalAlign: 'middle' }}>delete</span>
+        </button>}
+        {!onDelete && onRedact && <button onClick={() => { if (confirm('Hide this media from chat?')) onRedact(src) }} title="Hide media" style={deleteButtonStyle}>
+          <span className="material-icons" style={{ fontSize: 13, verticalAlign: 'middle' }}>visibility_off</span>
         </button>}
       </div>
 

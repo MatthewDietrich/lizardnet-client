@@ -1,6 +1,6 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { randomUUID } from 'crypto'
+import { randomUUID, createHmac } from 'crypto'
 
 const s3 = new S3Client({
   region: 'us-east-2',
@@ -33,6 +33,10 @@ const cors = {
   'Access-Control-Allow-Headers': 'Content-Type,Authorization',
 }
 
+function makeDeleteToken(key) {
+  return createHmac('sha256', process.env.DELETE_TOKEN_SECRET).update(key).digest('hex')
+}
+
 export const handler = async (event) => {
   const body = typeof event.body === 'string' ? JSON.parse(event.body) : event
   const { contentType } = body
@@ -60,6 +64,7 @@ export const handler = async (event) => {
     body: JSON.stringify({
       uploadUrl: url,
       publicUrl: `https://lizardnet-media.s3.amazonaws.com/${key}`,
+      deleteToken: makeDeleteToken(key),
     }),
   }
 }

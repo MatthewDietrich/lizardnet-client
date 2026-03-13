@@ -6,8 +6,10 @@ interface Props {
   messages: Message[]
   nick: string
   onNickClick?: (nick: string, pos: { x: number; y: number }) => void
-  canDeleteMedia?: boolean
+  canDeleteUrl?: (url: string) => boolean
   onDeleteMedia?: (url: string) => void
+  canRedactUrl?: (url: string) => boolean
+  onRedactMedia?: (url: string) => void
 }
 
 const EMOJI_ONLY_RE = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u200d\ufe0f\u20e3]+$/u
@@ -31,9 +33,9 @@ function highlight(text: string, term: string) {
 
 const gridRow = { display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: '0.4em' }
 
-const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickClick, onDeleteMedia }: { m: Message; mentioned: boolean; searchTerm: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void; onDeleteMedia?: (url: string) => void }) {
+const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickClick, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl }: { m: Message; mentioned: boolean; searchTerm: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void; onDeleteMedia?: (url: string) => void; canDeleteUrl?: (url: string) => boolean; onRedactMedia?: (url: string) => void; canRedactUrl?: (url: string) => boolean }) {
   const ts = <span style={{ fontSize: 11, color: 'var(--c-disabled-fg)', whiteSpace: 'nowrap' }}>{m.ts.toLocaleTimeString()}</span>
-  const text = searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, onDeleteMedia)
+  const text = searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl)
   const fromText = searchTerm ? highlight(m.from, searchTerm) : m.from
   const from = m.from && m.from !== '*' && m.kind !== 'event' && onNickClick
     ? <strong style={{ cursor: 'pointer' }} onClick={e => onNickClick(m.from, { x: e.clientX, y: e.clientY })}>{fromText}</strong>
@@ -65,7 +67,7 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
   )
 })
 
-export default function MessageList({ messages, nick, onNickClick, canDeleteMedia, onDeleteMedia }: Props) {
+export default function MessageList({ messages, nick, onNickClick, canDeleteUrl, onDeleteMedia, canRedactUrl, onRedactMedia }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -193,7 +195,7 @@ export default function MessageList({ messages, nick, onNickClick, canDeleteMedi
         {filteredMessages.map((m, i) => {
           const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
             m.from !== nick && !!mentionRegex?.test(m.text)
-          return <MessageRow key={i} m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} onDeleteMedia={canDeleteMedia ? onDeleteMedia : undefined} />
+          return <MessageRow key={i} m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} onDeleteMedia={onDeleteMedia} canDeleteUrl={canDeleteUrl} onRedactMedia={onRedactMedia} canRedactUrl={canRedactUrl} />
         })}
         <div ref={endRef} />
       </div>

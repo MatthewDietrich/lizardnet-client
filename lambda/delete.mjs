@@ -1,4 +1,5 @@
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { createHmac } from 'crypto'
 
 const s3 = new S3Client({
   region: 'us-east-2',
@@ -14,9 +15,13 @@ const cors = {
   'Access-Control-Allow-Headers': 'Content-Type,Authorization',
 }
 
+function makeDeleteToken(key) {
+  return createHmac('sha256', process.env.DELETE_TOKEN_SECRET).update(key).digest('hex')
+}
+
 export const handler = async (event) => {
   const body = typeof event.body === 'string' ? JSON.parse(event.body) : event
-  const { url } = body
+  const { url, deleteToken } = body
 
   if (!url || !url.startsWith(BUCKET_URL)) {
     return {
@@ -34,6 +39,19 @@ export const handler = async (event) => {
       statusCode: 400,
       headers: cors,
       body: JSON.stringify({ error: 'Invalid key' }),
+    }
+  }
+
+  const authHeader = event.headers?.Authorization ?? event.headers?.authorization ?? ''
+  const isAdmin = (process.env.ADMIN_TOKEN && authHeader === `Bearer ${process.env.ADMIN_TOKEN}`) ||
+                  (process.env.MOD_TOKEN && authHeader === `Bearer ${process.env.MOD_TOKEN}`)
+  const isOwner = deleteToken && deleteToken === makeDeleteToken(key)
+
+  if (!isAdmin && !isOwner) {
+    return {
+      statusCode: 403,
+      headers: cors,
+      body: JSON.stringify({ error: 'Not authorized' }),
     }
   }
 

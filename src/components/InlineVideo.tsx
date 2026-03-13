@@ -6,7 +6,7 @@ const deleteButtonStyle: React.CSSProperties = {
   color: '#fff', cursor: 'pointer', padding: '2px 5px', lineHeight: 1,
 }
 
-export function InlineVideo({ src, onDelete }: { src: string; onDelete?: (url: string) => void }) {
+export function InlineVideo({ src, onDelete, onRedact }: { src: string; onDelete?: (url: string) => void; onRedact?: (url: string) => void }) {
   const [error, setError] = useState(false)
   if (error) return <span className="text-muted fst-italic">[media unavailable]</span>
   return (
@@ -19,6 +19,9 @@ export function InlineVideo({ src, onDelete }: { src: string; onDelete?: (url: s
       />
       {onDelete && <button onClick={() => { if (confirm('Delete this media permanently?')) onDelete(src) }} title="Delete media" style={deleteButtonStyle}>
         <span className="material-icons" style={{ fontSize: 13, verticalAlign: 'middle' }}>delete</span>
+      </button>}
+      {!onDelete && onRedact && <button onClick={() => { if (confirm('Hide this media from chat?')) onRedact(src) }} title="Hide media" style={deleteButtonStyle}>
+        <span className="material-icons" style={{ fontSize: 13, verticalAlign: 'middle' }}>visibility_off</span>
       </button>}
     </div>
   )

@@ -82,7 +82,7 @@ const RESET: Style = {
 }
 
 
-export function parseIrc(text: string, onDeleteMedia?: (url: string) => void): ReactNode[] {
+export function parseIrc(text: string, onDeleteMedia?: (url: string) => void, canDeleteUrl?: (url: string) => boolean, onRedactMedia?: (url: string) => void, canRedactUrl?: (url: string) => boolean): ReactNode[] {
   const nodes: ReactNode[] = []
   let style: Style = { ...RESET }
   let buffer = ''
@@ -155,11 +155,17 @@ export function parseIrc(text: string, onDeleteMedia?: (url: string) => void): R
         )
       }
       if (isS3Url(parts[j]) && isAudioUrl(parts[j])) {
-        nodes.push(<InlineAudio key={key++} src={parts[j]} onDelete={onDeleteMedia ?? undefined} />)
+        const del = onDeleteMedia && canDeleteUrl?.(parts[j]) ? onDeleteMedia : undefined
+        const redact = !del && onRedactMedia && canRedactUrl?.(parts[j]) ? onRedactMedia : undefined
+        nodes.push(<InlineAudio key={key++} src={parts[j]} onDelete={del} onRedact={redact} />)
       } else if (isS3Url(parts[j]) && isVideoUrl(parts[j])) {
-        nodes.push(<InlineVideo key={key++} src={parts[j]} onDelete={onDeleteMedia ?? undefined} />)
+        const del = onDeleteMedia && canDeleteUrl?.(parts[j]) ? onDeleteMedia : undefined
+        const redact = !del && onRedactMedia && canRedactUrl?.(parts[j]) ? onRedactMedia : undefined
+        nodes.push(<InlineVideo key={key++} src={parts[j]} onDelete={del} onRedact={redact} />)
       } else if (isS3Url(parts[j]) && isImageUrl(parts[j])) {
-        nodes.push(<InlineImage key={key++} src={parts[j]} onDelete={onDeleteMedia ?? undefined} />)
+        const del = onDeleteMedia && canDeleteUrl?.(parts[j]) ? onDeleteMedia : undefined
+        const redact = !del && onRedactMedia && canRedactUrl?.(parts[j]) ? onRedactMedia : undefined
+        nodes.push(<InlineImage key={key++} src={parts[j]} onDelete={del} onRedact={redact} />)
       } else if (isImageUrl(parts[j])) {
         nodes.push(
           <CollapseEmbed key={key++} label="Image">
