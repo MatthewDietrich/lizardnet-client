@@ -36,6 +36,7 @@ export function useIrcClient(settings: Settings) {
   const focusedRef = useRef(document.hasFocus())
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
   const botRequestsRef = useRef<{ resolve: (msg: string) => void; reject: (e: Error) => void }[]>([])
+  const botBufferRef = useRef('')
   const credentialsRef = useRef<Awaited<ReturnType<typeof encryptCreds>> | null>(null)
   const sendTimestampsRef = useRef<number[]>([])
   const activeBatchesRef = useRef<Map<string, string>>(new Map())
@@ -283,12 +284,19 @@ export function useIrcClient(settings: Settings) {
       let text = e.message ?? e.notice ?? ''
       if (!text) return
       if (e.nick?.toLowerCase() === BOT_NICK.toLowerCase()) {
+        botBufferRef.current += text
+        const buf = botBufferRef.current
+        // PRESIGN_OK is complete when it ends with the public S3 URL (no trailing content)
+        const isPresignOk = buf.startsWith('PRESIGN_OK ') && /https:\/\/lizardnet-media\.s3\.amazonaws\.com\/[0-9a-f-]+\.\w+$/.test(buf)
+        const isComplete = isPresignOk || buf === 'DELETE_OK' || /^(PRESIGN_FAIL|DELETE_FAIL)/.test(buf)
+        if (!isComplete) return
+        botBufferRef.current = ''
         const pending = botRequestsRef.current.shift()
         if (pending) {
-          if (text.startsWith('PRESIGN_OK ') || text === 'DELETE_OK') {
-            pending.resolve(text)
+          if (isPresignOk || buf === 'DELETE_OK') {
+            pending.resolve(buf)
           } else {
-            pending.reject(new Error(text.replace(/^(PRESIGN_FAIL|DELETE_FAIL)\s*/, '')))
+            pending.reject(new Error(buf.replace(/^(PRESIGN_FAIL|DELETE_FAIL)\s*/, '')))
           }
         }
         return

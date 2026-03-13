@@ -34,6 +34,15 @@ const cors = {
 }
 
 export const handler = async (event) => {
+  const authHeader = event.headers?.Authorization ?? event.headers?.authorization ?? ''
+  if (!process.env.PRESIGN_TOKEN || authHeader !== `Bearer ${process.env.PRESIGN_TOKEN}`) {
+    return {
+      statusCode: 403,
+      headers: cors,
+      body: JSON.stringify({ error: 'Not authorized' }),
+    }
+  }
+
   const body = typeof event.body === 'string' ? JSON.parse(event.body) : event
   const { contentType } = body
 

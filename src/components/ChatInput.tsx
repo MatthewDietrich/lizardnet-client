@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import EmojiPicker, { type EmojiClickData, Theme } from 'emoji-picker-react'
-import { uploadToS3 } from '../lib/s3Upload'
+import { uploadToS3, type BotRequest } from '../lib/s3Upload'
 
 interface Props {
   connected: boolean
   users: string[]
   commands: string[]
   onSend: (text: string) => void
+  botRequest: BotRequest
 }
 
 export interface ChatInputHandle {
@@ -15,7 +16,7 @@ export interface ChatInputHandle {
   focus: () => void
 }
 
-const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connected, users, commands, onSend }, ref) {
+const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connected, users, commands, onSend, botRequest }, ref) {
   const [input, setInput] = useState('')
   const [showPicker, setShowPicker] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
@@ -83,7 +84,7 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
     setUploadError(null)
     setUploadProgress(0)
     try {
-      const url = await uploadToS3(file, setUploadProgress)
+      const url = await uploadToS3(file, botRequest, setUploadProgress)
       setUploadProgress(null)
       onSend(url)
     } catch (e) {
