@@ -27,6 +27,8 @@ export function useIrcClient(settings: Settings) {
   const [messages, setMessages] = useState<Message[]>([])
   const [users, setUsers] = useState<string[]>([])
   const [ops, setOps] = useState<string[]>([])
+  const opsRef = useRef<string[]>([])
+  useEffect(() => { opsRef.current = ops }, [ops])
   const [bannedUsers, setBannedUsers] = useState<string[]>([])
   const [topic, setTopicState] = useState('')
   const [unreadCount, setUnreadCount] = useState(0)
@@ -125,7 +127,6 @@ export function useIrcClient(settings: Settings) {
   }, [])
 
   function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat', ts?: Date, isHistory = false) {
-    if (text.startsWith('MEDIADELETE ')) return
     const isMention = !isHistory && (kind === 'chat' || kind === 'action') &&
       !!nickRef.current &&
       from !== nickRef.current &&
@@ -202,7 +203,7 @@ export function useIrcClient(settings: Settings) {
       const isHistory = !!(tags?.batch && activeBatchesRef.current.get(tags.batch) === 'chathistory')
       if (target?.toLowerCase() === '#chat') {
         const trimmed = message.trim()
-        if (trimmed.startsWith('MEDIADELETE ')) {
+        if (trimmed.startsWith('MEDIADELETE ') && opsRef.current.includes(who)) {
           const url = trimmed.slice('MEDIADELETE '.length).trim()
           if (url) redactMediaUrl(url)
           return
