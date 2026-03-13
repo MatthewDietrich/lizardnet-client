@@ -38,6 +38,7 @@ export function useIrcClient(settings: Settings) {
   const [pmPeerRename, setPmPeerRename] = useState<{ from: string; to: string } | null>(null)
 
   function escapeRegex(s: string) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
+  function sanitize(s: string) { return s.replace(/[\r\n]/g, '') }
 
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
   type EncryptedCreds = { nick: string; key: CryptoKey; iv: Uint8Array<ArrayBuffer>; ciphertext: ArrayBuffer }
@@ -594,38 +595,39 @@ export function useIrcClient(settings: Settings) {
   }
 
   function whois(target: string) {
-    clientRef.current?.raw(`WHOIS ${target}`)
+    clientRef.current?.raw(`WHOIS ${sanitize(target)}`)
   }
 
   function kick(target: string) {
-    clientRef.current?.raw(`KICK #chat ${target}`)
+    clientRef.current?.raw(`KICK #chat ${sanitize(target)}`)
   }
 
   function ban(target: string) {
-    pendingBansRef.current.add(target)
-    silentWhoisRef.current.add(target)
-    clientRef.current?.raw(`WHOIS ${target}`)
+    const safe = sanitize(target)
+    pendingBansRef.current.add(safe)
+    silentWhoisRef.current.add(safe)
+    clientRef.current?.raw(`WHOIS ${safe}`)
   }
 
   function unban(mask: string) {
-    clientRef.current?.raw(`MODE #chat -b ${mask}`)
+    clientRef.current?.raw(`MODE #chat -b ${sanitize(mask)}`)
   }
 
   function op(target: string) {
-    clientRef.current?.raw(`MODE #chat +o ${target}`)
+    clientRef.current?.raw(`MODE #chat +o ${sanitize(target)}`)
   }
 
   function deop(target: string) {
-    clientRef.current?.raw(`MODE #chat -o ${target}`)
+    clientRef.current?.raw(`MODE #chat -o ${sanitize(target)}`)
   }
 
   function changeTopic(newTopic: string) {
-    clientRef.current?.raw(`TOPIC #chat :${newTopic}`)
+    clientRef.current?.raw(`TOPIC #chat :${sanitize(newTopic)}`)
   }
 
   function changeNick(newNick: string) {
     if (!clientRef.current) return
-    clientRef.current.raw(`NICK ${newNick.replace(' ', '_')}`)
+    clientRef.current.raw(`NICK ${sanitize(newNick).replace(' ', '_')}`)
   }
 
   function sayNickServ(text: string) {
@@ -643,7 +645,7 @@ export function useIrcClient(settings: Settings) {
   }
 
   function sendMediaDelete(url: string) {
-    clientRef.current?.raw(`PRIVMSG #chat :MEDIADELETE ${url}`)
+    clientRef.current?.raw(`PRIVMSG #chat :MEDIADELETE ${sanitize(url)}`)
   }
 
   function redactMediaUrl(url: string) {
@@ -661,7 +663,7 @@ export function useIrcClient(settings: Settings) {
   }
 
   function setAway(message: string) {
-    clientRef.current?.raw(`AWAY :${message}`)
+    clientRef.current?.raw(`AWAY :${sanitize(message)}`)
   }
 
   function setBack() {
@@ -669,7 +671,7 @@ export function useIrcClient(settings: Settings) {
   }
 
   function sendOper(name: string, password: string) {
-    clientRef.current?.raw(`OPER ${name} ${password}`)
+    clientRef.current?.raw(`OPER ${sanitize(name)} ${sanitize(password)}`)
   }
 
   return { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, disconnect, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addMessage, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete }
