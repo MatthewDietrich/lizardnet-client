@@ -112,8 +112,10 @@ export function useIrcClient(settings: Settings) {
       if (target?.toLowerCase() === '#chat') {
         const trimmed = message.trim()
         if (trimmed.startsWith('MEDIADELETE ')) {
-          const url = trimmed.slice('MEDIADELETE '.length).trim()
-          if (url) redactMediaUrl(url)
+          if (opsRef.current.includes(who)) {
+            const url = trimmed.slice('MEDIADELETE '.length).trim()
+            if (url) redactMediaUrl(url)
+          }
           return
         }
         addMessage(who, message, isAction ? 'action' : 'chat', serverTime, isHistory)
