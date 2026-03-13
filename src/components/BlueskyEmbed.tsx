@@ -35,7 +35,7 @@ export function BlueskyEmbed({ url }: { url: string }) {
     function onMessage(e: MessageEvent) {
       if (e.origin !== 'https://embed.bsky.app') return
       if (e.source !== iframeRef.current?.contentWindow) return
-      if (typeof e.data?.height === 'number') setHeight(e.data.height)
+      if (typeof e.data?.height === 'number') setHeight(Math.min(Math.max(0, e.data.height), 2000))
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)

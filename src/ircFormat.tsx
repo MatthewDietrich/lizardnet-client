@@ -11,6 +11,13 @@ function replaceEmojis(text: string): string {
   return text.replace(/:([a-z0-9_+-]+):/g, (match, name) => getEmoji(name) ?? match)
 }
 
+function isSafeUrl(url: string): boolean {
+  try {
+    const { protocol } = new URL(url)
+    return protocol === 'http:' || protocol === 'https:'
+  } catch { return false }
+}
+
 function isImageUrl(url: string): boolean {
   try {
     const path = new URL(url).pathname.toLowerCase()
@@ -121,12 +128,13 @@ export function parseIrc(text: string, onDeleteMedia?: (url: string) => void): R
       <span key={key++} style={spanStyle}>
         {parts.map((part, j) =>
           j % 2 === 1
-            ? isS3Url(part) ? null : <a key={j} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
+            ? isS3Url(part) ? null : isSafeUrl(part) ? <a key={j} href={part} target="_blank" rel="noopener noreferrer">{part}</a> : <span key={j}>{part}</span>
             : part
         )}
       </span>
     )
     for (let j = 1; j < parts.length; j += 2) {
+      if (!isSafeUrl(parts[j])) continue
       const videoId = getYouTubeId(parts[j])
       if (videoId) {
         nodes.push(
