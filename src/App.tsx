@@ -71,7 +71,6 @@ export default function App() {
     <div className="d-flex flex-column px-4 py-3" style={{ height: '100dvh' }}>
       <ChatHeader
         nick={nick}
-        connected={connected}
         connStatus={connStatus}
         isOper={isOper}
         ops={ops}

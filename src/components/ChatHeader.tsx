@@ -3,7 +3,6 @@ import type { ConnStatus } from '../hooks/useIrcClient'
 
 interface Props {
   nick: string
-  connected: boolean
   connStatus: ConnStatus
   isOper: boolean
   ops: string[]
@@ -13,7 +12,7 @@ interface Props {
   onShowNickOrConnect: () => void
 }
 
-export default function ChatHeader({ nick, connected, connStatus, isOper, ops, theme, onShowAdmin, onShowSettings, onShowNickOrConnect }: Props) {
+export default function ChatHeader({ nick, connStatus, isOper, ops, theme, onShowAdmin, onShowSettings, onShowNickOrConnect }: Props) {
   return (
     <div className="d-flex align-items-center gap-3 mb-3">
       <img src={lizardIcon} alt="" style={{ height: 32, filter: theme === 'light' ? 'brightness(0)' : 'none' }} />
