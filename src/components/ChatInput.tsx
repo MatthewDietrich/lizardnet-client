@@ -181,7 +181,8 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
         <label
           htmlFor="chat-file-upload"
           className={`btn btn-outline-secondary${!connected || uploadProgress !== null ? ' disabled' : ''}`}
-          title={uploadProgress !== null ? `Uploading ${uploadProgress}%` : 'Upload image or video'}
+          title={uploadProgress !== null ? `Uploading ${uploadProgress}%` : 'Attach file'}
+          aria-label={uploadProgress !== null ? `Uploading ${uploadProgress}%` : 'Attach file'}
           style={{ fontSize: 18, lineHeight: 1, minWidth: 38, marginBottom: 0 }}
           onClick={e => { if (!connected || uploadProgress !== null) e.preventDefault() }}
         >
@@ -196,11 +197,12 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
           onClick={() => setShowPicker(v => !v)}
           disabled={!connected}
           title="Emoji picker"
+          aria-label="Open emoji picker"
           style={{ fontSize: 18, lineHeight: 1 }}
         >
           😊
         </button>
-        <button type="submit" className="btn btn-primary d-flex align-items-center gap-1" disabled={!connected}>
+        <button type="submit" className="btn btn-primary d-flex align-items-center gap-1" disabled={!connected} aria-label="Send message">
           <span className="material-icons" style={{ fontSize: 18 }}>send</span>
         </button>
       </form>

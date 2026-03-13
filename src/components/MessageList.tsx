@@ -74,6 +74,27 @@ export default function MessageList({ messages, nick, onNickClick, canDeleteMedi
   const [newCount, setNewCount] = useState(0)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [liveText, setLiveText] = useState('')
+  const prevLiveLengthRef = useRef(0)
+
+  useEffect(() => {
+    if (messages.length <= prevLiveLengthRef.current) {
+      prevLiveLengthRef.current = messages.length
+      return
+    }
+    prevLiveLengthRef.current = messages.length
+    const m = messages[messages.length - 1]
+    if (!m) return
+    const plain = m.text
+      .replace(/\x03\d{1,2}(,\d{1,2})?/g, '')
+      .replace(/[\x02\x03\x1d\x1f\x16\x0f]/g, '')
+    let announcement: string
+    if (m.kind === 'event') announcement = plain
+    else if (m.kind === 'action') announcement = `* ${m.from} ${plain}`
+    else if (m.kind === 'pm') announcement = `[PM] ${m.from}: ${plain}`
+    else announcement = `${m.from}: ${plain}`
+    setLiveText(announcement)
+  }, [messages])
 
   useEffect(() => {
     const el = containerRef.current
@@ -137,11 +158,19 @@ export default function MessageList({ messages, nick, onNickClick, canDeleteMedi
 
   return (
     <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0 }}>
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}
+      >
+        {liveText}
+      </div>
       {searchOpen && (
         <div className="d-flex align-items-center gap-2 px-2 py-1 border rounded-top bg-light" style={{ flexShrink: 0, borderBottom: 'none' }}>
           <input
             ref={searchInputRef}
             className="form-control form-control-sm font-monospace"
+            aria-label="Search messages"
             placeholder="Search messages..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}

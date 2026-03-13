@@ -59,6 +59,7 @@ export default function UserList({ users, ops, awayUsers, nick, onUserClick }: P
           className="btn btn-sm py-0 px-1"
           style={{ fontSize: 11, color: 'var(--c-secondary)', lineHeight: 1 }}
           title="Collapse user list"
+          aria-label="Collapse user list"
           onClick={() => setCollapsed(true)}
         >
           ›
@@ -67,20 +68,26 @@ export default function UserList({ users, ops, awayUsers, nick, onUserClick }: P
       {users.map(u => {
         const isAway = awayUsers.has(u)
         return (
-          <div
+          <button
             key={u}
             className={`${u === nick ? 'fw-bold' : ''} user-select-none`}
             style={{
-              cursor: 'pointer', borderRadius: 3, padding: '1px 2px',
+              display: 'block', width: '100%', textAlign: 'left',
+              background: 'none', border: 'none', padding: '1px 2px', borderRadius: 3,
+              font: 'inherit', cursor: 'pointer',
               color: u === nick ? 'var(--c-primary)' : 'var(--c-secondary)',
               opacity: isAway ? 0.45 : 1,
               fontStyle: isAway ? 'italic' : 'normal',
             }}
             title={isAway ? `${u} is away` : undefined}
-            onClick={e => onUserClick(u, { x: e.clientX, y: e.clientY })}
+            aria-label={`${u}${ops.includes(u) ? ', moderator' : ''}${isAway ? ', away' : ''}`}
+            onClick={e => {
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              onUserClick(u, { x: e.clientX || rect.right, y: e.clientY || rect.top })
+            }}
           >
             {u}{ops.includes(u) && <span style={{ color: 'var(--c-quaternary)', fontSize: 10 }}> (Mod)</span>}
-          </div>
+          </button>
         )
       })}
       {users.length === 0 && <span style={{ color: 'var(--c-secondary)' }}>—</span>}
