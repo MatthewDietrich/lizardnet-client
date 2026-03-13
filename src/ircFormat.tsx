@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { Fragment, type CSSProperties, type ReactNode } from 'react'
 import { get as getEmoji } from 'node-emoji'
 import { TwitterEmbed, getTwitterInfo } from './components/TwitterEmbed'
 import { BlueskyEmbed, getBlueskyUrl } from './components/BlueskyEmbed'
@@ -130,7 +130,13 @@ export function parseIrc(text: string, onDeleteMedia?: (url: string) => void): R
         {parts.map((part, j) =>
           j % 2 === 1
             ? isS3Url(part) ? null : isSafeUrl(part) ? <a key={j} href={part} target="_blank" rel="noopener noreferrer">{part}</a> : <span key={j}>{part}</span>
-            : part
+            : part.includes('[media deleted]')
+              ? <Fragment key={j}>{part.split('[media deleted]').map((seg, i, arr) =>
+                  i < arr.length - 1
+                    ? <Fragment key={i}>{seg}<span style={{ color: 'var(--c-secondary)', fontStyle: 'italic' }}>[media deleted]</span></Fragment>
+                    : seg
+                )}</Fragment>
+              : part
         )}
       </span>
     )
