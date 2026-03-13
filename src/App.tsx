@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { deleteFromS3, hasUploadedUrl } from './lib/s3Upload'
-import lizardIcon from './assets/lizard_icon.svg'
 import { useIrcClient } from './hooks/useIrcClient'
 import { useSettings } from './hooks/useSettings'
+import { useCommandHandler, HELP_LINES } from './hooks/useCommandHandler'
+import ChatHeader from './components/ChatHeader'
 import ConnectModal from './components/ConnectModal'
 import AdminConsole from './components/AdminConsole'
 import SettingsConsole from './components/SettingsConsole'
@@ -58,136 +59,27 @@ export default function App() {
     if (activeTab === peer) setActiveTab('#chat')
   }
 
-  const HELP_LINES = [
-    '/say <message>               — send message literally (useful for text starting with /)',
-    '/me <action>                 — send an action message',
-    '/nick <nick>                 — change your nickname',
-    '/msg <nick> <message>        — send a private message',
-    '/identify <password>         — identify a registered nickname (log in)',
-    '/register <password> <email> — register nickname',
-    '/ghost <nick> <password>     — disconnect a ghost using your nickname',
-    '/away [message]              — set yourself as away',
-    '/back                        — return from away',
-    '/oper <name> <password>      — authenticate as a server operator',
-    '/help                        — show this help',
-  ]
-
-  function handleSend(text: string) {
-    if (text.startsWith('/say ')) {
-      const msg = text.slice(5)
-      if (msg) { activeTab === '#chat' ? sendMessage(msg) : sendPrivMsg(activeTab, msg); return }
-    }
-    if (text.startsWith('/me ')) {
-      const action = text.slice(4).trim()
-      if (action) { sendAction(action, activeTab !== '#chat' ? activeTab : '#chat'); return }
-    }
-    if (text.startsWith('/nick ')) {
-      const newNick = text.slice(6).trim()
-      if (newNick) { changeNick(newNick); return }
-    }
-    if (text.startsWith('/msg ')) {
-      const rest = text.slice(5)
-      const spaceIdx = rest.indexOf(' ')
-      const target = spaceIdx === -1 ? rest.trim() : rest.slice(0, spaceIdx)
-      const body = spaceIdx === -1 ? '' : rest.slice(spaceIdx + 1)
-      if (target) {
-        openPmConversation(target)
-        if (body.trim()) sendPrivMsg(target, body)
-        switchTab(target)
-        return
-      }
-    }
-    if (text.startsWith('/identify ')) {
-      sayNickServ(`IDENTIFY ${text.slice(10).trim()}`)
-      return
-    }
-    if (text.startsWith('/register ')) {
-      const parts = text.slice(10).trim().split(' ')
-      if (parts.length >= 2) {
-        sayNickServ(`REGISTER ${parts[0]} ${parts[1]}`)
-        return
-      }
-    }
-    if (text.startsWith('/ghost ')) {
-      const parts = text.slice(7).trim().split(' ')
-      if (parts.length >= 2) {
-        sayNickServ(`GHOST ${parts[0]} ${parts[1]}`)
-        return
-      }
-    }
-    if (text.startsWith('/oper ')) {
-      const parts = text.slice(6).trim().split(' ')
-      if (parts.length >= 2) {
-        sendOper(parts[0], parts[1])
-        return
-      }
-    }
-    if (text === '/away' || text.startsWith('/away ')) {
-      setAway(text.slice(6))
-      return
-    }
-    if (text === '/back') {
-      setBack()
-      return
-    }
-    if (text === '/help') {
-      for (const line of HELP_LINES) addActive(line)
-      return
-    }
-    if (text.startsWith('/')) {
-      addActive('Invalid command. Type /help for a list of commands.')
-      return
-    }
-    if (activeTab !== '#chat') {
-      sendPrivMsg(activeTab, text)
-      return
-    }
-    sendMessage(text)
-  }
+  const handleSend = useCommandHandler({
+    activeTab, sendMessage, sendPrivMsg, sendAction, changeNick,
+    openPmConversation, switchTab, sayNickServ, sendOper, setAway, setBack, addActive,
+  })
 
   const activeMessages = activeTab === '#chat' ? messages : (pmConversations.get(activeTab) ?? [])
   const pmPeers = [...pmConversations.keys()]
 
   return (
     <div className="d-flex flex-column px-4 py-3" style={{ height: '100dvh' }}>
-      <div className="d-flex align-items-center gap-3 mb-3">
-        <img src={lizardIcon} alt="" style={{ height: 32, filter: theme === 'light' ? 'brightness(0)' : 'none' }} />
-        <h4 className="mb-0">Lizardnet</h4>
-        <span
-          title={connStatus}
-          role="status"
-          aria-label={`Connection status: ${connStatus}`}
-          style={{
-            width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-            background: connStatus === 'connected' ? 'var(--c-primary)' : connStatus === 'disconnected' ? 'var(--c-tertiary)' : 'var(--c-quaternary)',
-            animation: connStatus === 'connecting' || connStatus === 'reconnecting' ? 'pulse 1s ease-in-out infinite' : 'none',
-          }}
-        />
-        {(isOper || ops.includes(nick)) && (
-          <button className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1" onClick={() => setShowAdminConsole(true)}>
-            <span className="material-icons" style={{ fontSize: 16 }}>admin_panel_settings</span>
-            Moderator Console
-          </button>
-        )}
-        <div className="ms-auto d-flex align-items-center gap-2" style={{ position: 'relative' }}>
-          <button
-            className="btn btn-sm btn-outline-secondary d-flex align-items-center"
-            onClick={() => setShowSettingsConsole(true)}
-            title="Settings"
-            aria-label="Settings"
-          >
-            <span className="material-icons" style={{ fontSize: 16 }}>settings</span>
-          </button>
-
-          <button
-            className="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
-            onClick={() => connected ? setShowNickPopup(true) : setShowConnectModal(true)}
-          >
-            <span className="material-icons" style={{ fontSize: 16 }}>account_circle</span>
-            {nick ? <><strong>{nick}</strong></> : 'Set nickname'}
-          </button>
-        </div>
-      </div>
+      <ChatHeader
+        nick={nick}
+        connected={connected}
+        connStatus={connStatus}
+        isOper={isOper}
+        ops={ops}
+        theme={theme}
+        onShowAdmin={() => setShowAdminConsole(true)}
+        onShowSettings={() => setShowSettingsConsole(true)}
+        onShowNickOrConnect={() => connected ? setShowNickPopup(true) : setShowConnectModal(true)}
+      />
 
       {connected && <TopicBar topic={topic} isOper={isOper} onChangeTopic={changeTopic} />}
 
