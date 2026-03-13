@@ -40,24 +40,24 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
     : <strong>{fromText}</strong>
   if (m.kind === 'event') return (
     <div className="fst-italic" style={{ ...gridRow, fontSize: 12, color: 'var(--c-tertiary)' }}>
-      {ts}<span>{searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, onDeleteMedia)}</span>
+      {ts}<div>{searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, onDeleteMedia)}</div>
     </div>
   )
   if (m.kind === 'action') return (
     <div className="fst-italic" style={mentioned ? { ...gridRow, ...mentionStyle } : gridRow}>
-      {ts}<span>{from} {text}</span>
+      {ts}<div>{from} {text}</div>
     </div>
   )
   if (m.kind === 'pm') return (
     <div style={{ ...gridRow, color: 'var(--c-quaternary)' }}>
-      {ts}<span><span style={{ opacity: 0.6 }}>[PM]</span> {from}: {text}</span>
+      {ts}<div><span style={{ opacity: 0.6 }}>[PM]</span> {from}: {text}</div>
     </div>
   )
   const emojiOnly = EMOJI_ONLY_RE.test(m.text.trim())
   return (
     <div style={mentioned ? { ...gridRow, ...mentionStyle } : gridRow}>
       {ts}
-      <span>{from}:{' '}<span style={emojiOnly ? { fontSize: 36, lineHeight: 1.1 } : undefined}>{text}</span></span>
+      <div>{from}:{' '}<span style={emojiOnly ? { fontSize: 36, lineHeight: 1.1 } : undefined}>{text}</span></div>
     </div>
   )
 })
