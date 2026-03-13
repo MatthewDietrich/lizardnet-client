@@ -57,7 +57,10 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
   return (
     <div style={mentioned ? { ...gridRow, ...mentionStyle } : gridRow}>
       {ts}
-      <div>{from}:{' '}<span style={emojiOnly ? { fontSize: 36, lineHeight: 1.1 } : undefined}>{text}</span></div>
+      <div>
+        {from}:{' '}
+        {emojiOnly ? <span style={{ fontSize: 36, lineHeight: 1.1 }}>{text}</span> : text}
+      </div>
     </div>
   )
 })
