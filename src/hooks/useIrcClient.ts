@@ -111,9 +111,11 @@ export function useIrcClient(settings: Settings) {
       const isHistory = !!(tags?.batch && activeBatchesRef.current.get(tags.batch) === 'chathistory')
       if (target?.toLowerCase() === '#chat') {
         const trimmed = message.trim()
-        if (trimmed.startsWith('MEDIADELETE ') && opsRef.current.includes(who)) {
-          const url = trimmed.slice('MEDIADELETE '.length).trim()
-          if (url) redactMediaUrl(url)
+        if (trimmed.startsWith('MEDIADELETE ')) {
+          if (opsRef.current.includes(who)) {
+            const url = trimmed.slice('MEDIADELETE '.length).trim()
+            if (url) redactMediaUrl(url)
+          }
           return
         }
         addMessage(who, message, isAction ? 'action' : 'chat', serverTime, isHistory)
