@@ -50,6 +50,7 @@ export default function App() {
   function switchTab(tab: string) {
     setActiveTab(tab)
     if (tab !== '#chat') clearPmUnread(tab)
+    requestAnimationFrame(() => chatInputRef.current?.focus())
   }
 
   function closeTab(peer: string) {

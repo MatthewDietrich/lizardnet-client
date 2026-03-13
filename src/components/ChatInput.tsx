@@ -12,6 +12,7 @@ interface Props {
 export interface ChatInputHandle {
   setDraft: (text: string) => void
   mention: (nick: string) => void
+  focus: () => void
 }
 
 const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connected, users, commands, onSend }, ref) {
@@ -51,6 +52,9 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
         const len = inputRef.current?.value.length ?? 0
         inputRef.current?.setSelectionRange(len, len)
       })
+    },
+    focus() {
+      inputRef.current?.focus()
     },
   }))
 
