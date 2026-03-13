@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 
-export function InlineImage({ src }: { src: string }) {
+const deleteButtonStyle: React.CSSProperties = {
+  position: 'absolute', top: 4, right: 4,
+  background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: 3,
+  color: '#fff', cursor: 'pointer', padding: '2px 5px', lineHeight: 1,
+}
+
+export function InlineImage({ src, onDelete }: { src: string; onDelete?: (url: string) => void }) {
   const [expanded, setExpanded] = useState(false)
   const [error, setError] = useState(false)
   const alt = 'User-uploaded image'
@@ -27,7 +33,7 @@ export function InlineImage({ src }: { src: string }) {
 
   return (
     <>
-      <div style={{ marginTop: '0.5em', marginBottom: '0.5em' }}>
+      <div style={{ marginTop: '0.5em', marginBottom: '0.5em', position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
         <button
           ref={thumbnailBtnRef}
           onClick={() => setExpanded(true)}
@@ -41,6 +47,9 @@ export function InlineImage({ src }: { src: string }) {
             style={{ maxWidth: 'min(400px, 100%)', maxHeight: 300, display: 'block', borderRadius: 8 }}
           />
         </button>
+        {onDelete && <button onClick={() => { if (confirm('Delete this media permanently?')) onDelete(src) }} title="Delete media" style={deleteButtonStyle}>
+          <span className="material-icons" style={{ fontSize: 13, verticalAlign: 'middle' }}>delete</span>
+        </button>}
       </div>
 
       {expanded && (
