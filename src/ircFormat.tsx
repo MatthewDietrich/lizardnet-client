@@ -227,3 +227,9 @@ export function parseIrc(text: string, onDeleteMedia?: (url: string) => void, ca
   flush()
   return nodes
 }
+
+const MEDIA_TYPES = new Set<unknown>([InlineImage, InlineVideo, InlineAudio, CollapseEmbed])
+
+export function isMediaNode(node: ReactNode): boolean {
+  return !!(node && typeof node === 'object' && 'type' in (node as object) && MEDIA_TYPES.has((node as { type: unknown }).type))
+}

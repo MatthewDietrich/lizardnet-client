@@ -1,5 +1,5 @@
 import { useRef, useMemo, memo, useLayoutEffect, useState, useEffect, useCallback } from 'react'
-import { parseIrc } from '../ircFormat'
+import { parseIrc, isMediaNode } from '../ircFormat'
 import type { Message } from '../types'
 
 interface Props {
@@ -35,7 +35,9 @@ const gridRow = { display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: '
 
 const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickClick, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl }: { m: Message; mentioned: boolean; searchTerm: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void; onDeleteMedia?: (url: string) => void; canDeleteUrl?: (url: string) => boolean; onRedactMedia?: (url: string) => void; canRedactUrl?: (url: string) => boolean }) {
   const ts = <span style={{ fontSize: 11, color: 'var(--c-disabled-fg)', whiteSpace: 'nowrap' }}>{m.ts.toLocaleTimeString()}</span>
-  const text = searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl)
+  const parsed = searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl)
+  const textNodes = Array.isArray(parsed) ? parsed.filter(n => !isMediaNode(n)) : parsed
+  const mediaNodes = Array.isArray(parsed) ? parsed.filter(n => isMediaNode(n)) : []
   const fromText = searchTerm ? highlight(m.from, searchTerm) : m.from
   const from = m.from && m.from !== '*' && m.kind !== 'event' && onNickClick
     ? <strong style={{ cursor: 'pointer' }} onClick={e => onNickClick(m.from, { x: e.clientX, y: e.clientY })}>{fromText}</strong>
@@ -60,8 +62,11 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
     <div style={mentioned ? { ...gridRow, ...mentionStyle } : gridRow}>
       {ts}
       <div>
-        {from}:{' '}
-        {emojiOnly ? <span style={{ fontSize: 36, lineHeight: 1.1 }}>{text}</span> : text}
+        <div>
+          {from}:{' '}
+          {emojiOnly ? <span style={{ fontSize: 36, lineHeight: 1.1 }}>{textNodes}</span> : textNodes}
+        </div>
+        {mediaNodes.length > 0 && <div style={{ marginTop: 4 }}>{mediaNodes}</div>}
       </div>
     </div>
   )
