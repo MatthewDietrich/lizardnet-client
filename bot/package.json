@@ -1,0 +1,9 @@
+{
+  "name": "lizardnet-mediabot",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.mjs",
+  "dependencies": {
+    "irc-framework": "^4.4.0"
+  }
+}

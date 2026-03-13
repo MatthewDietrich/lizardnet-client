@@ -13,6 +13,7 @@ const HOST = 'irc.lizard.fun'
 const PORT = 7003
 const RATE_LIMIT = { messages: 5, windowMs: 4000 }
 const MAX_MESSAGES = 2000
+const BOT_NICK = 'MediaBot'
 
 export function useIrcClient(settings: Settings) {
   const settingsRef = useRef(settings)
@@ -34,6 +35,7 @@ export function useIrcClient(settings: Settings) {
 
   const focusedRef = useRef(document.hasFocus())
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
+  const botRequestsRef = useRef<{ resolve: (msg: string) => void; reject: (e: Error) => void }[]>([])
   const credentialsRef = useRef<Awaited<ReturnType<typeof encryptCreds>> | null>(null)
   const sendTimestampsRef = useRef<number[]>([])
   const activeBatchesRef = useRef<Map<string, string>>(new Map())
@@ -105,7 +107,7 @@ export function useIrcClient(settings: Settings) {
   function attachListeners(client: InstanceType<typeof IRC.Client>) {
     client.on('message', (event: unknown) => {
       const { nick: who, target, message, type, tags } = event as { nick: string; target: string; message: string; type: string; tags?: Record<string, string> }
-      if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
+      if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv' || who.toLowerCase() === BOT_NICK.toLowerCase()) return
       const isAction = type === 'action'
       const serverTime = tags?.['server-time'] ? new Date(tags['server-time']) : undefined
       const isHistory = !!(tags?.batch && activeBatchesRef.current.get(tags.batch) === 'chathistory')
@@ -280,6 +282,17 @@ export function useIrcClient(settings: Settings) {
       const e = event as { nick?: string; message?: string; notice?: string }
       let text = e.message ?? e.notice ?? ''
       if (!text) return
+      if (e.nick?.toLowerCase() === BOT_NICK.toLowerCase()) {
+        const pending = botRequestsRef.current.shift()
+        if (pending) {
+          if (text.startsWith('PRESIGN_OK ') || text === 'DELETE_OK') {
+            pending.resolve(text)
+          } else {
+            pending.reject(new Error(text.replace(/^(PRESIGN_FAIL|DELETE_FAIL)\s*/, '')))
+          }
+        }
+        return
+      }
       if (e.nick?.toLowerCase() === 'nickserv') {
         if (/^Last login from:/i.test(text)) return
         if (/^Welcome to /i.test(text)) return
@@ -434,6 +447,21 @@ export function useIrcClient(settings: Settings) {
   function sendOper(name: string, password: string) { clientRef.current?.raw(`OPER ${sanitize(name)} ${sanitize(password)}`) }
   function sendMediaDelete(url: string) { clientRef.current?.raw(`PRIVMSG #chat :MEDIADELETE ${sanitize(url)}`) }
 
+  function requestFromBot(cmd: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        const idx = botRequestsRef.current.findIndex(r => r.resolve === resolve)
+        if (idx >= 0) botRequestsRef.current.splice(idx, 1)
+        reject(new Error('Bot request timed out'))
+      }, 15_000)
+      botRequestsRef.current.push({
+        resolve: (msg: string) => { clearTimeout(timeout); resolve(msg) },
+        reject: (e: Error) => { clearTimeout(timeout); reject(e) },
+      })
+      clientRef.current?.say(BOT_NICK, cmd)
+    })
+  }
+
   return {
     nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers,
     pmConversations, pmUnread, pmPeerRename,
@@ -441,5 +469,6 @@ export function useIrcClient(settings: Settings) {
     whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ,
     addMessage, addActive, setAway, setBack, redactMediaUrl,
     clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer,
+    requestFromBot,
   }
 }

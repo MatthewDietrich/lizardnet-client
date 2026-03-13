@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { deleteFromS3, getDeleteToken } from './lib/s3Upload'
+import { deleteFromS3, hasUploadedUrl } from './lib/s3Upload'
 import lizardIcon from './assets/lizard_icon.svg'
 import { useIrcClient } from './hooks/useIrcClient'
 import { useSettings } from './hooks/useSettings'
@@ -17,7 +17,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 
 export default function App() {
   const { settings, setSetting } = useSettings()
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete } = useIrcClient(settings)
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete, requestFromBot } = useIrcClient(settings)
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -197,8 +197,8 @@ export default function App() {
             messages={activeMessages}
             nick={nick}
             onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
-            canDeleteUrl={url => !!getDeleteToken(url) || (isOper && !!import.meta.env.VITE_UPLOAD_TOKEN)}
-            onDeleteMedia={url => deleteFromS3(url).then(() => { redactMediaUrl(url); sendMediaDelete(url) }).catch(err => addActive(`Failed to delete: ${err.message}`))}
+            canDeleteUrl={url => hasUploadedUrl(url) || isOper || ops.includes(nick)}
+            onDeleteMedia={url => deleteFromS3(url, requestFromBot).then(() => { redactMediaUrl(url); sendMediaDelete(url) }).catch(err => addActive(`Failed to delete: ${err.message.includes('identified') ? 'Logged in as guest. Please /register or /identify. Type /help for help' : err.message}`))}
             canRedactUrl={() => isOper || ops.includes(nick)}
             onRedactMedia={url => { redactMediaUrl(url); sendMediaDelete(url) }}
           />
