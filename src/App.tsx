@@ -84,17 +84,19 @@ export default function App() {
       {connected && <TopicBar topic={topic} isOper={isOper} onChangeTopic={changeTopic} />}
 
       <div className="d-flex gap-3 flex-grow-1" style={{ minHeight: 0 }}>
-        <ErrorBoundary>
-          <MessageList
-            messages={activeMessages}
-            nick={nick}
-            onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
-            canDeleteUrl={url => hasUploadedUrl(url) || isOper || ops.includes(nick)}
-            onDeleteMedia={url => deleteFromS3(url, requestFromBot).then(() => { redactMediaUrl(url); sendMediaDelete(url) }).catch(err => addActive(`Failed to delete: ${err.message.includes('identified') ? 'Logged in as guest. Please /register or /identify. Type /help for help' : err.message}`))}
-            canRedactUrl={() => isOper || ops.includes(nick)}
-            onRedactMedia={url => { redactMediaUrl(url); sendMediaDelete(url) }}
-          />
-        </ErrorBoundary>
+        <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <ErrorBoundary>
+            <MessageList
+              messages={activeMessages}
+              nick={nick}
+              onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
+              canDeleteUrl={url => hasUploadedUrl(url) || isOper || ops.includes(nick)}
+              onDeleteMedia={url => deleteFromS3(url, requestFromBot).then(() => { redactMediaUrl(url); sendMediaDelete(url) }).catch(err => addActive(`Failed to delete: ${err.message.includes('identified') ? 'Logged in as guest. Please /register or /identify. Type /help for help' : err.message}`))}
+              canRedactUrl={() => isOper || ops.includes(nick)}
+              onRedactMedia={url => { redactMediaUrl(url); sendMediaDelete(url) }}
+            />
+          </ErrorBoundary>
+        </div>
         <UserList
           users={users}
           ops={ops}

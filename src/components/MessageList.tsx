@@ -187,7 +187,7 @@ export default function MessageList({ messages, nick, onNickClick, canDeleteUrl,
       <div
         ref={containerRef}
         className={`border p-3 bg-light font-monospace flex-grow-1${searchOpen ? '' : ' rounded'}`}
-        style={{ overflowY: 'auto', fontSize: 16, borderRadius: searchOpen ? '0 0 var(--bs-border-radius) var(--bs-border-radius)' : undefined }}
+        style={{ overflowY: 'auto', overflowX: 'hidden', fontSize: 16, borderRadius: searchOpen ? '0 0 var(--bs-border-radius) var(--bs-border-radius)' : undefined }}
       >
         {filteredMessages.length === 0 && (
           <span className="text-muted">{searchTerm ? 'No results.' : 'No messages yet.'}</span>
