@@ -85,7 +85,15 @@ const RESET: Style = {
 }
 
 
-export function parseIrc(text: string, onDeleteMedia?: (url: string) => void, canDeleteUrl?: (url: string) => boolean, onRedactMedia?: (url: string) => void, canRedactUrl?: (url: string) => boolean): ReactNode[] {
+export interface ParseIrcOptions {
+  onDelete?: (url: string) => void
+  canDelete?: (url: string) => boolean
+  onRedact?: (url: string) => void
+  canRedact?: (url: string) => boolean
+}
+
+export function parseIrc(text: string, opts: ParseIrcOptions = {}): ReactNode[] {
+  const { onDelete, canDelete, onRedact, canRedact } = opts
   const nodes: ReactNode[] = []
   let style: Style = { ...RESET }
   let buffer = ''
@@ -158,16 +166,16 @@ export function parseIrc(text: string, onDeleteMedia?: (url: string) => void, ca
         )
       }
       if (isS3Url(parts[j]) && isAudioUrl(parts[j])) {
-        const del = onDeleteMedia && canDeleteUrl?.(parts[j]) ? onDeleteMedia : undefined
-        const redact = !del && onRedactMedia && canRedactUrl?.(parts[j]) ? onRedactMedia : undefined
+        const del = onDelete && canDelete?.(parts[j]) ? onDelete : undefined
+        const redact = !del && onRedact && canRedact?.(parts[j]) ? onRedact : undefined
         nodes.push(<InlineAudio key={key++} src={parts[j]} onDelete={del} onRedact={redact} />)
       } else if (isS3Url(parts[j]) && isVideoUrl(parts[j])) {
-        const del = onDeleteMedia && canDeleteUrl?.(parts[j]) ? onDeleteMedia : undefined
-        const redact = !del && onRedactMedia && canRedactUrl?.(parts[j]) ? onRedactMedia : undefined
+        const del = onDelete && canDelete?.(parts[j]) ? onDelete : undefined
+        const redact = !del && onRedact && canRedact?.(parts[j]) ? onRedact : undefined
         nodes.push(<InlineVideo key={key++} src={parts[j]} onDelete={del} onRedact={redact} />)
       } else if (isS3Url(parts[j]) && isImageUrl(parts[j])) {
-        const del = onDeleteMedia && canDeleteUrl?.(parts[j]) ? onDeleteMedia : undefined
-        const redact = !del && onRedactMedia && canRedactUrl?.(parts[j]) ? onRedactMedia : undefined
+        const del = onDelete && canDelete?.(parts[j]) ? onDelete : undefined
+        const redact = !del && onRedact && canRedact?.(parts[j]) ? onRedact : undefined
         nodes.push(<InlineImage key={key++} src={parts[j]} onDelete={del} onRedact={redact} />)
       } else if (isImageUrl(parts[j])) {
         nodes.push(

@@ -35,7 +35,7 @@ const gridRow = { display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: '
 
 const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickClick, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl }: { m: Message; mentioned: boolean; searchTerm: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void; onDeleteMedia?: (url: string) => void; canDeleteUrl?: (url: string) => boolean; onRedactMedia?: (url: string) => void; canRedactUrl?: (url: string) => boolean }) {
   const ts = <span style={{ fontSize: 11, color: 'var(--c-disabled-fg)', whiteSpace: 'nowrap' }}>{m.ts.toLocaleTimeString()}</span>
-  const parsed = searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl)
+  const parsed = searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, { onDelete: onDeleteMedia, canDelete: canDeleteUrl, onRedact: onRedactMedia, canRedact: canRedactUrl })
   const textNodes = Array.isArray(parsed) ? parsed.filter(n => !isMediaNode(n)) : parsed
   const mediaNodes = Array.isArray(parsed) ? parsed.filter(n => isMediaNode(n)) : []
   const fromText = searchTerm ? highlight(m.from, searchTerm) : m.from
@@ -44,7 +44,7 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
     : <strong>{fromText}</strong>
   if (m.kind === 'event') return (
     <div className="fst-italic" style={{ ...gridRow, fontSize: 12, color: 'var(--c-tertiary)' }}>
-      {ts}<div>{searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, onDeleteMedia)}</div>
+      {ts}<div>{searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, { onDelete: onDeleteMedia })}</div>
     </div>
   )
   if (m.kind === 'action') return (

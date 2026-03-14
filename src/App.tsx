@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { deleteFromS3, hasUploadedUrl } from './lib/s3Upload'
 import { useIrcClient } from './hooks/useIrcClient'
 import { useSettings } from './hooks/useSettings'
-import { useCommandHandler, HELP_LINES } from './hooks/useCommandHandler'
+import { createCommandHandler, HELP_LINES } from './lib/createCommandHandler'
 import ChatHeader from './components/ChatHeader'
 import ConnectModal from './components/ConnectModal'
 import AdminConsole from './components/AdminConsole'
@@ -59,7 +59,7 @@ export default function App() {
     if (activeTab === peer) setActiveTab('#chat')
   }
 
-  const handleSend = useCommandHandler({
+  const handleSend = createCommandHandler({
     activeTab, sendMessage, sendPrivMsg, sendAction, changeNick,
     openPmConversation, switchTab, sayNickServ, sendOper, setAway, setBack, addActive,
   })
@@ -90,7 +90,7 @@ export default function App() {
               nick={nick}
               onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
               canDeleteUrl={url => hasUploadedUrl(url) || isOper || ops.includes(nick)}
-              onDeleteMedia={url => deleteFromS3(url, requestFromBot).then(() => { redactMediaUrl(url); sendMediaDelete(url) }).catch(err => addActive(`Failed to delete: ${err.message.includes('identified') ? 'Logged in as guest. Please /register or /identify. Type /help for help' : err.message}`))}
+              onDeleteMedia={url => deleteFromS3(url, requestFromBot).then(() => { redactMediaUrl(url) }).catch(err => addActive(`Failed to delete: ${err.message.includes('identified') ? 'Logged in as guest. Please /register or /identify. Type /help for help' : err.message}`))}
               canRedactUrl={() => isOper || ops.includes(nick)}
               onRedactMedia={url => { redactMediaUrl(url); sendMediaDelete(url) }}
             />

@@ -1,10 +1,5 @@
 import { useState } from 'react'
-
-const deleteButtonStyle: React.CSSProperties = {
-  position: 'absolute', top: 4, right: 4,
-  background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: 3,
-  color: '#fff', cursor: 'pointer', padding: '2px 5px', lineHeight: 1,
-}
+import { overlayButtonStyle } from '../lib/styles'
 
 export function InlineVideo({ src, onDelete, onRedact }: { src: string; onDelete?: (url: string) => void; onRedact?: (url: string) => void }) {
   const [error, setError] = useState(false)
@@ -17,10 +12,10 @@ export function InlineVideo({ src, onDelete, onRedact }: { src: string; onDelete
         onError={() => setError(true)}
         style={{ maxWidth: 'min(400px, 100%)', maxHeight: 300, display: 'block', borderRadius: 8 }}
       />
-      {onDelete && <button onClick={() => { if (confirm('Delete this media permanently?')) onDelete(src) }} title="Delete media" style={deleteButtonStyle}>
+      {onDelete && <button onClick={() => { if (confirm('Delete this media permanently?')) onDelete(src) }} title="Delete media" style={overlayButtonStyle}>
         <span className="material-icons" style={{ fontSize: 13, verticalAlign: 'middle' }}>delete</span>
       </button>}
-      {!onDelete && onRedact && <button onClick={() => { if (confirm('Hide this media from chat?')) onRedact(src) }} title="Hide media" style={deleteButtonStyle}>
+      {!onDelete && onRedact && <button onClick={() => { if (confirm('Hide this media from chat?')) onRedact(src) }} title="Hide media" style={overlayButtonStyle}>
         <span className="material-icons" style={{ fontSize: 13, verticalAlign: 'middle' }}>visibility_off</span>
       </button>}
     </div>

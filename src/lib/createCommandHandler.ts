@@ -27,7 +27,7 @@ interface Options {
   addActive: (msg: string) => void
 }
 
-export function useCommandHandler({
+export function createCommandHandler({
   activeTab, sendMessage, sendPrivMsg, sendAction, changeNick,
   openPmConversation, switchTab, sayNickServ, sendOper, setAway, setBack, addActive,
 }: Options) {
