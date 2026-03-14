@@ -15,10 +15,11 @@ import ChatInput, { type ChatInputHandle } from './components/ChatInput'
 import ChangeNickPopup from './components/ChangeNickPopup'
 import PmTabs from './components/PmTabs'
 import ErrorBoundary from './components/ErrorBoundary'
+import { TypingIndicator } from './components/TypingIndicator'
 
 export default function App() {
   const { settings, setSetting } = useSettings()
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete, requestFromBot } = useIrcClient(settings)
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, typingUsers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete, sendTyping, requestFromBot } = useIrcClient(settings)
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -113,8 +114,9 @@ export default function App() {
         onClose={closeTab}
       />
 
-      <div className={pmPeers.length > 0 ? 'mt-2' : 'mt-3'}>
-        <ChatInput ref={chatInputRef} connected={connected} users={users} commands={HELP_LINES.map(l => l.match(/^(\S+)/)?.[1] ?? '')} onSend={handleSend} botRequest={requestFromBot} />
+      {activeTab === '#chat' && <TypingIndicator users={typingUsers} />}
+      <div className={pmPeers.length > 0 ? 'mt-2' : 'mt-1'}>
+        <ChatInput ref={chatInputRef} connected={connected} users={users} commands={HELP_LINES.map(l => l.match(/^(\S+)/)?.[1] ?? '')} onSend={handleSend} botRequest={requestFromBot} onTyping={activeTab === '#chat' ? sendTyping : undefined} />
       </div>
 
       {menuUser && (

@@ -32,6 +32,8 @@ export function useIrcClient(settings: Settings) {
   const [topic, setTopicState] = useState('')
   const [unreadCount, setUnreadCount] = useState(0)
   const [awayUsers, setAwayUsers] = useState<Set<string>>(new Set())
+  const [typingUsers, setTypingUsers] = useState<string[]>([])
+  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   const focusedRef = useRef(document.hasFocus())
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
@@ -80,6 +82,27 @@ export function useIrcClient(settings: Settings) {
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [])
+
+  function handleTypingUser(who: string, state: string | undefined) {
+    const timers = typingTimersRef.current
+    clearTimeout(timers.get(who))
+    timers.delete(who)
+    if (!state || state === 'done') {
+      setTypingUsers(prev => prev.filter(u => u !== who))
+      return
+    }
+    setTypingUsers(prev => prev.includes(who) ? prev : [...prev, who])
+    timers.set(who, setTimeout(() => {
+      timers.delete(who)
+      setTypingUsers(prev => prev.filter(u => u !== who))
+    }, 6_000))
+  }
+
+  function clearAllTyping() {
+    for (const t of typingTimersRef.current.values()) clearTimeout(t)
+    typingTimersRef.current.clear()
+    setTypingUsers([])
+  }
 
   function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat', ts?: Date, isHistory = false) {
     const isMention = !isHistory && (kind === 'chat' || kind === 'action') &&
@@ -144,6 +167,25 @@ export function useIrcClient(settings: Settings) {
       for (let i = 0; i < parts.length; i++) {
         if (parts[i].startsWith(':')) { p.push(parts.slice(i).join(' ').slice(1)); break }
         if (parts[i]) p.push(parts[i])
+      }
+
+      if (cmd === 'TAGMSG' && p[0]?.toLowerCase() === '#chat') {
+        let scan = e.line
+        const rawTags: Record<string, string> = {}
+        if (scan.startsWith('@')) {
+          const sp = scan.indexOf(' ')
+          for (const tag of scan.slice(1, sp).split(';')) {
+            const eq = tag.indexOf('=')
+            rawTags[eq >= 0 ? tag.slice(0, eq) : tag] = eq >= 0 ? tag.slice(eq + 1) : ''
+          }
+          scan = scan.slice(sp + 1)
+        }
+        if (scan.startsWith(':')) {
+          const sp = scan.indexOf(' ')
+          const prefix = scan.slice(1, sp)
+          const who = prefix.includes('!') ? prefix.slice(0, prefix.indexOf('!')) : prefix
+          if (who && who !== nickRef.current) handleTypingUser(who, rawTags['+typing'])
+        }
       }
 
       if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2])
@@ -249,6 +291,7 @@ export function useIrcClient(settings: Settings) {
       if (e.channel.toLowerCase() !== '#chat') return
       setUsers(prev => prev.filter(u => u !== e.nick))
       setAwayUsers(prev => { const s = new Set(prev); s.delete(e.nick); return s })
+      handleTypingUser(e.nick, 'done')
       addMessage('*', `${e.nick} has left${e.message ? ` (${e.message})` : ''}`, 'event')
     })
 
@@ -256,6 +299,7 @@ export function useIrcClient(settings: Settings) {
       const e = event as { nick: string; message?: string }
       setUsers(prev => prev.filter(u => u !== e.nick))
       setAwayUsers(prev => { const s = new Set(prev); s.delete(e.nick); return s })
+      handleTypingUser(e.nick, 'done')
       addMessage('*', `${e.nick} has quit`, 'event')
     })
 
@@ -271,6 +315,7 @@ export function useIrcClient(settings: Settings) {
     client.on('nick', (event: unknown) => {
       const e = event as { nick: string; new_nick: string }
       if (e.nick === nickRef.current) { setNick(e.new_nick); nickRef.current = e.new_nick }
+      handleTypingUser(e.nick, 'done')
       setUsers(prev => prev.map(u => u === e.nick ? e.new_nick : u).sort((a, b) => a.localeCompare(b)))
       setOps(prev => prev.map(u => u === e.nick ? e.new_nick : u))
       setAwayUsers(prev => {
@@ -320,6 +365,7 @@ export function useIrcClient(settings: Settings) {
       setOps([])
       setBannedUsers([])
       setAwayUsers(new Set())
+      clearAllTyping()
       if (manualDisconnectRef.current) {
         manualDisconnectRef.current = false
         setConnStatus('disconnected')
@@ -394,6 +440,7 @@ export function useIrcClient(settings: Settings) {
     setOps([])
     setBannedUsers([])
     setAwayUsers(new Set())
+    clearAllTyping()
     addMessage('*', 'Disconnected.', 'event')
   }
 
@@ -456,6 +503,7 @@ export function useIrcClient(settings: Settings) {
   function setBack() { clientRef.current?.raw('AWAY') }
   function sendOper(name: string, password: string) { clientRef.current?.raw(`OPER ${sanitize(name)} ${sanitize(password)}`) }
   function sendMediaDelete(url: string) { clientRef.current?.raw(`PRIVMSG #chat :MEDIADELETE ${sanitize(url)}`) }
+  function sendTyping(state: 'active' | 'paused' | 'done') { clientRef.current?.raw(`@+typing=${state} TAGMSG #chat`) }
 
   function requestFromBot(cmd: string): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -474,8 +522,9 @@ export function useIrcClient(settings: Settings) {
 
   return {
     nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers,
+    typingUsers,
     pmConversations, pmUnread, pmPeerRename,
-    connect, register, disconnect, sendMessage, sendPrivMsg, sendAction, sendOper, sendMediaDelete,
+    connect, register, disconnect, sendMessage, sendPrivMsg, sendAction, sendOper, sendMediaDelete, sendTyping,
     whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ,
     addMessage, addActive, setAway, setBack, redactMediaUrl,
     clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer,

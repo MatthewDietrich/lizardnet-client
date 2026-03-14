@@ -8,6 +8,7 @@ interface Props {
   commands: string[]
   onSend: (text: string) => void
   botRequest: BotRequest
+  onTyping?: (state: 'active' | 'paused' | 'done') => void
 }
 
 export interface ChatInputHandle {
@@ -16,7 +17,7 @@ export interface ChatInputHandle {
   focus: () => void
 }
 
-const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connected, users, commands, onSend, botRequest }, ref) {
+const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connected, users, commands, onSend, botRequest, onTyping }, ref) {
   const [input, setInput] = useState('')
   const [showPicker, setShowPicker] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
@@ -24,6 +25,8 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastTypingSentRef = useRef(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const tabStateRef = useRef<{
     matches: string[]
@@ -108,6 +111,9 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
   function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault()
     if (!input.trim()) return
+    if (typingTimerRef.current) { clearTimeout(typingTimerRef.current); typingTimerRef.current = null }
+    lastTypingSentRef.current = 0
+    onTyping?.('done')
     onSend(input)
     setInput('')
   }
@@ -174,7 +180,23 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
           className="form-control"
           placeholder="Type a message..."
           value={input}
-          onChange={e => { setInput(e.target.value); tabStateRef.current = null }}
+          onChange={e => {
+            const val = e.target.value
+            setInput(val)
+            tabStateRef.current = null
+            if (onTyping) {
+              if (!val) {
+                if (typingTimerRef.current) { clearTimeout(typingTimerRef.current); typingTimerRef.current = null }
+                lastTypingSentRef.current = 0
+                onTyping('done')
+              } else {
+                const now = Date.now()
+                if (now - lastTypingSentRef.current > 3_000) { lastTypingSentRef.current = now; onTyping('active') }
+                if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
+                typingTimerRef.current = setTimeout(() => { typingTimerRef.current = null; onTyping('paused') }, 5_000)
+              }
+            }
+          }}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           disabled={!connected}
