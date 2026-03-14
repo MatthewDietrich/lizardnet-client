@@ -1,6 +1,7 @@
 import IRC from 'irc-framework'
+import { DatabaseSync } from 'node:sqlite'
 
-const HOST            = 'irc.lizard.fun'
+const HOST            = process.env.IRC_HOST || '127.0.0.1'
 const PORT            = 6667
 const CHANNEL         = '#chat'
 const BOT_NICK        = process.env.BOT_NICK        || 'MediaBot'
@@ -8,6 +9,7 @@ const BOT_PASS        = process.env.BOT_PASS        || ''
 const ADMIN_TOKEN     = process.env.ADMIN_TOKEN
 const PRESIGN_URL     = process.env.PRESIGN_URL     || 'https://yw76re20g8.execute-api.us-east-2.amazonaws.com/prod/presign'
 const DELETE_URL      = process.env.DELETE_URL      || 'https://yw76re20g8.execute-api.us-east-2.amazonaws.com/prod/delete'
+const DB_PATH         = process.env.DB_PATH         || '/opt/mediabot/uploads.db'
 
 if (!ADMIN_TOKEN) { console.error('ADMIN_TOKEN is required'); process.exit(1) }
 
@@ -17,8 +19,22 @@ const ALLOWED_TYPES = new Set([
   'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/flac', 'audio/aac', 'audio/mp4', 'audio/webm',
 ])
 
-// publicUrl -> uploaderNick
-const uploadedBy = new Map()
+// ─── Persistent upload ownership DB ──────────────────────────────────────────
+
+const db = new DatabaseSync(DB_PATH)
+db.exec(`CREATE TABLE IF NOT EXISTS uploads (url TEXT PRIMARY KEY, nick TEXT NOT NULL)`)
+
+const stmtSet    = db.prepare(`INSERT OR REPLACE INTO uploads (url, nick) VALUES (?, ?)`)
+const stmtGet    = db.prepare(`SELECT nick FROM uploads WHERE url = ?`)
+const stmtDelete = db.prepare(`DELETE FROM uploads WHERE url = ?`)
+const stmtRename = db.prepare(`UPDATE uploads SET nick = ? WHERE nick = ?`)
+
+const uploadedBy = {
+  set: (url, nick) => stmtSet.run(url, nick),
+  get: (url) => stmtGet.get(url)?.nick ?? null,
+  delete: (url) => stmtDelete.run(url),
+  rename: (oldNick, newNick) => stmtRename.run(newNick, oldNick),
+}
 
 // nicks currently opped in CHANNEL
 const channelOps = new Set()
@@ -69,9 +85,7 @@ client.on('mode', ({ target, modes }) => {
 // Keep op set and uploadedBy consistent on nick changes
 client.on('nick', ({ nick, new_nick }) => {
   if (channelOps.delete(nick)) channelOps.add(new_nick)
-  for (const [url, owner] of uploadedBy) {
-    if (owner === nick) uploadedBy.set(url, new_nick)
-  }
+  uploadedBy.rename(nick, new_nick)
 })
 
 // ─── NickServ identification check ───────────────────────────────────────────

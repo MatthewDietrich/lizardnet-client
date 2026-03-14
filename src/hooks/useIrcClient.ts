@@ -108,19 +108,21 @@ export function useIrcClient(settings: Settings) {
   function attachListeners(client: InstanceType<typeof IRC.Client>) {
     client.on('message', (event: unknown) => {
       const { nick: who, target, message, type, tags } = event as { nick: string; target: string; message: string; type: string; tags?: Record<string, string> }
-      if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv' || who.toLowerCase() === BOT_NICK.toLowerCase()) return
+      if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
+      if (who.toLowerCase() === BOT_NICK.toLowerCase()) {
+        if (target?.toLowerCase() === '#chat') {
+          const trimmed = message.trim()
+          if (trimmed.startsWith('MEDIADELETE ')) {
+            const url = trimmed.slice('MEDIADELETE '.length).trim()
+            if (url) redactMediaUrl(url)
+          }
+        }
+        return
+      }
       const isAction = type === 'action'
       const serverTime = tags?.['server-time'] ? new Date(tags['server-time']) : undefined
       const isHistory = !!(tags?.batch && activeBatchesRef.current.get(tags.batch) === 'chathistory')
       if (target?.toLowerCase() === '#chat') {
-        const trimmed = message.trim()
-        if (trimmed.startsWith('MEDIADELETE ')) {
-          if (opsRef.current.includes(who)) {
-            const url = trimmed.slice('MEDIADELETE '.length).trim()
-            if (url) redactMediaUrl(url)
-          }
-          return
-        }
         addMessage(who, message, isAction ? 'action' : 'chat', serverTime, isHistory)
       } else {
         addPmMessage(who, who, message, true, isAction ? 'action' : 'chat')
