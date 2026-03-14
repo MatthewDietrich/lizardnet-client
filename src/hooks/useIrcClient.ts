@@ -34,6 +34,8 @@ export function useIrcClient(settings: Settings) {
   const [awayUsers, setAwayUsers] = useState<Set<string>>(new Set())
   const [typingUsers, setTypingUsers] = useState<string[]>([])
   const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const [pmTypingPeers, setPmTypingPeers] = useState<Set<string>>(new Set())
+  const pmTypingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   const focusedRef = useRef(document.hasFocus())
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
@@ -98,10 +100,28 @@ export function useIrcClient(settings: Settings) {
     }, 6_000))
   }
 
+  function handlePmTyping(who: string, state: string | undefined) {
+    const timers = pmTypingTimersRef.current
+    clearTimeout(timers.get(who))
+    timers.delete(who)
+    if (!state || state === 'done') {
+      setPmTypingPeers(prev => { const s = new Set(prev); s.delete(who); return s })
+      return
+    }
+    setPmTypingPeers(prev => new Set([...prev, who]))
+    timers.set(who, setTimeout(() => {
+      timers.delete(who)
+      setPmTypingPeers(prev => { const s = new Set(prev); s.delete(who); return s })
+    }, 6_000))
+  }
+
   function clearAllTyping() {
     for (const t of typingTimersRef.current.values()) clearTimeout(t)
     typingTimersRef.current.clear()
     setTypingUsers([])
+    for (const t of pmTypingTimersRef.current.values()) clearTimeout(t)
+    pmTypingTimersRef.current.clear()
+    setPmTypingPeers(new Set())
   }
 
   function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat', ts?: Date, isHistory = false) {
@@ -273,6 +293,7 @@ export function useIrcClient(settings: Settings) {
       setUsers(prev => prev.filter(u => u !== e.nick))
       setAwayUsers(prev => { const s = new Set(prev); s.delete(e.nick); return s })
       handleTypingUser(e.nick, 'done')
+      handlePmTyping(e.nick, 'done')
       addMessage('*', `${e.nick} has left${e.message ? ` (${e.message})` : ''}`, 'event')
     })
 
@@ -281,6 +302,7 @@ export function useIrcClient(settings: Settings) {
       setUsers(prev => prev.filter(u => u !== e.nick))
       setAwayUsers(prev => { const s = new Set(prev); s.delete(e.nick); return s })
       handleTypingUser(e.nick, 'done')
+      handlePmTyping(e.nick, 'done')
       addMessage('*', `${e.nick} has quit`, 'event')
     })
 
@@ -297,6 +319,7 @@ export function useIrcClient(settings: Settings) {
       const e = event as { nick: string; new_nick: string }
       if (e.nick === nickRef.current) { setNick(e.new_nick); nickRef.current = e.new_nick }
       handleTypingUser(e.nick, 'done')
+      handlePmTyping(e.nick, 'done')
       setUsers(prev => prev.map(u => u === e.nick ? e.new_nick : u).sort((a, b) => a.localeCompare(b)))
       setOps(prev => prev.map(u => u === e.nick ? e.new_nick : u))
       setAwayUsers(prev => {
@@ -363,9 +386,10 @@ export function useIrcClient(settings: Settings) {
 
     client.on('tagmsg', (event: unknown) => {
       const e = event as { nick?: string; target?: string; tags?: Record<string, string> }
-      console.log('[tagmsg]', e)
-      if (e.target?.toLowerCase() !== '#chat' || !e.nick || e.nick === nickRef.current) return
-      handleTypingUser(e.nick, e.tags?.['+typing'])
+      if (!e.nick || e.nick === nickRef.current) return
+      const target = e.target?.toLowerCase()
+      if (target === '#chat') handleTypingUser(e.nick, e.tags?.['+typing'])
+      else if (target === nickRef.current.toLowerCase()) handlePmTyping(e.nick, e.tags?.['+typing'])
     })
 
     client.on('error', (err) => { addMessage('!', err.message) })
@@ -492,9 +516,8 @@ export function useIrcClient(settings: Settings) {
   function setBack() { clientRef.current?.raw('AWAY') }
   function sendOper(name: string, password: string) { clientRef.current?.raw(`OPER ${sanitize(name)} ${sanitize(password)}`) }
   function sendMediaDelete(url: string) { clientRef.current?.raw(`PRIVMSG #chat :MEDIADELETE ${sanitize(url)}`) }
-  function sendTyping(state: 'active' | 'paused' | 'done') {
-    console.log('[sendTyping]', state)
-    clientRef.current?.raw(`@+typing=${state} TAGMSG #chat`)
+  function sendTyping(state: 'active' | 'paused' | 'done', target: string) {
+    clientRef.current?.raw(`@+typing=${state} TAGMSG ${target}`)
   }
 
   function requestFromBot(cmd: string): Promise<string> {
@@ -514,7 +537,7 @@ export function useIrcClient(settings: Settings) {
 
   return {
     nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers,
-    typingUsers,
+    typingUsers, pmTypingPeers,
     pmConversations, pmUnread, pmPeerRename,
     connect, register, disconnect, sendMessage, sendPrivMsg, sendAction, sendOper, sendMediaDelete, sendTyping,
     whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ,
