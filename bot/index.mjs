@@ -104,8 +104,9 @@ client.on('notice', ({ nick, message }) => {
   for (const cb of callbacks) cb(identified)
 })
 
-function checkIdentified(nick) {
+function checkAcc(nick) {
   return new Promise(resolve => {
+    // Do not coalesce — each call must get its own independent ACC response
     const existing = pendingAcc.get(nick)
     if (existing) { existing.push(resolve); return }
     pendingAcc.set(nick, [resolve])
@@ -115,6 +116,13 @@ function checkIdentified(nick) {
       if (cbs) { pendingAcc.delete(nick); for (const cb of cbs) cb(false) }
     }, 5_000)
   })
+}
+
+// Two consecutive ACC checks required. An attacker would need to release and
+// re-acquire an identified nick between two back-to-back NickServ round trips.
+async function checkIdentified(nick) {
+  if (!await checkAcc(nick)) return false
+  return checkAcc(nick)
 }
 
 // ─── Lambda helpers ───────────────────────────────────────────────────────────
