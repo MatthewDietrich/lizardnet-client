@@ -1,6 +1,6 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { randomUUID } from 'crypto'
+import { randomUUID, timingSafeEqual } from 'crypto'
 
 const s3 = new S3Client({
   region: 'us-east-2',
@@ -35,7 +35,10 @@ const cors = {
 
 export const handler = async (event) => {
   const authHeader = event.headers?.Authorization ?? event.headers?.authorization ?? ''
-  if (!process.env.PRESIGN_TOKEN || authHeader !== `Bearer ${process.env.PRESIGN_TOKEN}`) {
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  const expected = process.env.PRESIGN_TOKEN ?? ''
+  const valid = token.length > 0 && expected.length > 0 && token.length === expected.length && timingSafeEqual(Buffer.from(token), Buffer.from(expected))
+  if (!valid) {
     return {
       statusCode: 403,
       headers: cors,

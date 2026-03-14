@@ -1,4 +1,5 @@
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { timingSafeEqual } from 'crypto'
 
 const s3 = new S3Client({
   region: 'us-east-2',
@@ -38,7 +39,10 @@ export const handler = async (event) => {
   }
 
   const authHeader = event.headers?.Authorization ?? event.headers?.authorization ?? ''
-  if (!process.env.ADMIN_TOKEN || authHeader !== `Bearer ${process.env.ADMIN_TOKEN}`) {
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  const expected = process.env.ADMIN_TOKEN ?? ''
+  const valid = token.length > 0 && expected.length > 0 && token.length === expected.length && timingSafeEqual(Buffer.from(token), Buffer.from(expected))
+  if (!valid) {
     return {
       statusCode: 403,
       headers: cors,
