@@ -169,25 +169,6 @@ export function useIrcClient(settings: Settings) {
         if (parts[i]) p.push(parts[i])
       }
 
-      if (cmd === 'TAGMSG' && p[0]?.toLowerCase() === '#chat') {
-        let scan = e.line
-        const rawTags: Record<string, string> = {}
-        if (scan.startsWith('@')) {
-          const sp = scan.indexOf(' ')
-          for (const tag of scan.slice(1, sp).split(';')) {
-            const eq = tag.indexOf('=')
-            rawTags[eq >= 0 ? tag.slice(0, eq) : tag] = eq >= 0 ? tag.slice(eq + 1) : ''
-          }
-          scan = scan.slice(sp + 1)
-        }
-        if (scan.startsWith(':')) {
-          const sp = scan.indexOf(' ')
-          const prefix = scan.slice(1, sp)
-          const who = prefix.includes('!') ? prefix.slice(0, prefix.indexOf('!')) : prefix
-          if (who && who !== nickRef.current) handleTypingUser(who, rawTags['+typing'])
-        }
-      }
-
       if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2])
       if (cmd === 'TOPIC' && p[0]?.toLowerCase() === '#chat' && p[1] !== undefined) {
         setTopicState(p[1])
@@ -378,6 +359,12 @@ export function useIrcClient(settings: Settings) {
       })
       setConnStatus('reconnecting')
       addMessage('*', `Disconnected. Reconnecting in ${delay / 1000}s…`, 'event')
+    })
+
+    client.on('tagmsg', (event: unknown) => {
+      const e = event as { nick?: string; target?: string; tags?: Record<string, string> }
+      if (e.target?.toLowerCase() !== '#chat' || !e.nick || e.nick === nickRef.current) return
+      handleTypingUser(e.nick, e.tags?.['+typing'])
     })
 
     client.on('error', (err) => { addMessage('!', err.message) })
