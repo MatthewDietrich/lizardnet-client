@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 interface Props {
   currentNick: string
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export default function ChangeNickPopup({ currentNick, onConfirm, onClose }: Props) {
+  const trapRef = useFocusTrap<HTMLDivElement>(onClose)
   const [value, setValue] = useState(currentNick)
 
   function handleSubmit(e: { preventDefault(): void }) {
@@ -19,12 +21,12 @@ export default function ChangeNickPopup({ currentNick, onConfirm, onClose }: Pro
 
   return (
     <>
-      <div className="modal show d-block" tabIndex={-1} onClick={onClose}>
+      <div ref={trapRef} className="modal show d-block" tabIndex={-1} role="dialog" aria-modal="true" aria-label="Change nickname" onClick={onClose}>
         <div className="modal-dialog modal-dialog-centered modal-sm" onClick={e => e.stopPropagation()}>
           <div className="modal-content">
             <div className="modal-header py-2">
               <h6 className="modal-title mb-0">Change nickname</h6>
-              <button type="button" className="btn-close" onClick={onClose} />
+              <button type="button" className="btn-close" onClick={onClose} aria-label="Close" />
             </div>
             <form onSubmit={handleSubmit}>
               <div className="modal-body py-2">
@@ -34,7 +36,7 @@ export default function ChangeNickPopup({ currentNick, onConfirm, onClose }: Pro
                   onChange={e => setValue(e.target.value)}
                   autoFocus
                   maxLength={30}
-                  onKeyDown={e => e.key === 'Escape' && onClose()}
+
                 />
               </div>
               <div className="modal-footer py-2">

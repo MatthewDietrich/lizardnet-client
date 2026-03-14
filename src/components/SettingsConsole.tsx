@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Settings } from '../hooks/useSettings'
 import { playNotificationSound } from '../lib/notification'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 interface Props {
   onClose: () => void
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function SettingsConsole({ onClose, settings, onChangeSetting, theme, onChangeTheme }: Props) {
+  const trapRef = useFocusTrap<HTMLDivElement>(onClose)
   const [tab, setTab] = useState<'notifications' | 'theme'>('notifications')
 
   async function handleDesktopToggle(enabled: boolean) {
@@ -30,12 +32,12 @@ export default function SettingsConsole({ onClose, settings, onChangeSetting, th
 
   return (
     <>
-      <div className="modal show d-block" tabIndex={-1} onClick={onClose}>
+      <div ref={trapRef} className="modal show d-block" tabIndex={-1} role="dialog" aria-modal="true" aria-label="Settings" onClick={onClose}>
         <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
           <div className="modal-content">
             <div className="modal-header">
               <h6 className="modal-title">Settings</h6>
-              <button type="button" className="btn-close" onClick={onClose} />
+              <button type="button" className="btn-close" onClick={onClose} aria-label="Close" />
             </div>
             <div className="modal-body">
               <ul className="nav nav-tabs mb-3">
@@ -116,20 +118,24 @@ export default function SettingsConsole({ onClose, settings, onChangeSetting, th
   )
 }
 
+let toggleId = 0
+
 function Toggle({ label, description, checked, onChange }: {
   label: string
   description?: string
   checked: boolean
   onChange: (v: boolean) => void
 }) {
+  const [id] = useState(() => `toggle-${++toggleId}`)
   return (
     <div className="d-flex align-items-center justify-content-between gap-3">
       <div>
-        <div style={{ fontSize: 14 }}>{label}</div>
+        <label htmlFor={id} style={{ fontSize: 14, cursor: 'pointer' }}>{label}</label>
         {description && <div style={{ fontSize: 11, color: 'var(--c-tertiary)' }}>{description}</div>}
       </div>
       <div className="form-check form-switch mb-0">
         <input
+          id={id}
           className="form-check-input"
           type="checkbox"
           role="switch"

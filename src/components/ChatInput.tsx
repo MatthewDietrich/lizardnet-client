@@ -70,8 +70,12 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
         setShowPicker(false)
       }
     }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setShowPicker(false)
+    }
     document.addEventListener('mousedown', onMouseDown)
-    return () => document.removeEventListener('mousedown', onMouseDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => { document.removeEventListener('mousedown', onMouseDown); document.removeEventListener('keydown', onKeyDown) }
   }, [showPicker])
 
   async function handleFile(file: File) {

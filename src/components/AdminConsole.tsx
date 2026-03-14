@@ -1,3 +1,5 @@
+import { useFocusTrap } from '../hooks/useFocusTrap'
+
 interface Props {
   onClose: () => void
   bannedUsers: string[]
@@ -5,14 +7,15 @@ interface Props {
 }
 
 export default function AdminConsole({ onClose, bannedUsers, onUnban }: Props) {
+  const trapRef = useFocusTrap<HTMLDivElement>(onClose)
   return (
     <>
-      <div className="modal show d-block" tabIndex={-1} onClick={onClose}>
+      <div ref={trapRef} className="modal show d-block" tabIndex={-1} role="dialog" aria-modal="true" aria-label="Moderator Console" onClick={onClose}>
         <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
           <div className="modal-content">
             <div className="modal-header">
               <h6 className="modal-title">Moderator Console</h6>
-              <button type="button" className="btn-close" onClick={onClose} />
+              <button type="button" className="btn-close" onClick={onClose} aria-label="Close" />
             </div>
             <div className="modal-body">
               <p className="small mb-2" style={{ color: 'var(--c-tertiary)' }}>Banned users</p>

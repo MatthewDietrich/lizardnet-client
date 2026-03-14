@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 const NICK_RE = /^[a-zA-Z\[\]\\`^{|}_][a-zA-Z0-9\[\]\\`^{|}_\-]*$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function ConnectModal({ onConnect, onRegister }: Props) {
+  const trapRef = useFocusTrap<HTMLDivElement>()
   const [tab, setTab] = useState<'connect' | 'register'>('connect')
   const [nickInput, setNickInput] = useState(() => localStorage.getItem('lastNick') ?? '')
   const [passwordInput, setPasswordInput] = useState('')
@@ -48,7 +50,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
 
   return (
     <>
-      <div className="modal show d-block" tabIndex={-1}>
+      <div ref={trapRef} className="modal show d-block" tabIndex={-1} role="dialog" aria-modal="true" aria-label="Connect">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content">
             <div className="modal-header">

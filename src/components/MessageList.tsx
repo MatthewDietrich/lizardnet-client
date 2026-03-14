@@ -49,12 +49,20 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
   )
   if (m.kind === 'action') return (
     <div className="fst-italic" style={mentioned ? { ...gridRow, ...mentionStyle } : gridRow}>
-      {ts}<div>{from} {text}</div>
+      {ts}
+      <div>
+        <div>{from} {textNodes}</div>
+        {mediaNodes.length > 0 && <div style={{ marginTop: 4 }}>{mediaNodes}</div>}
+      </div>
     </div>
   )
   if (m.kind === 'pm') return (
     <div style={{ ...gridRow, color: 'var(--c-quaternary)' }}>
-      {ts}<div><span style={{ opacity: 0.6 }}>[PM]</span> {from}: {text}</div>
+      {ts}
+      <div>
+        <div><span style={{ opacity: 0.6 }}>[PM]</span> {from}: {textNodes}</div>
+        {mediaNodes.length > 0 && <div style={{ marginTop: 4 }}>{mediaNodes}</div>}
+      </div>
     </div>
   )
   const emojiOnly = EMOJI_ONLY_RE.test(m.text.trim())
@@ -186,7 +194,7 @@ export default function MessageList({ messages, nick, onNickClick, canDeleteUrl,
           <span className="text-muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
             {searchTerm ? `${filteredMessages.length} result${filteredMessages.length !== 1 ? 's' : ''}` : ''}
           </span>
-          <button className="btn-close ms-auto" style={{ fontSize: 10 }} onClick={closeSearch} />
+          <button className="btn-close ms-auto" style={{ fontSize: 10 }} onClick={closeSearch} aria-label="Close search" />
         </div>
       )}
       <div
