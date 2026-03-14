@@ -170,6 +170,7 @@ export default function MessageList({ messages, nick, onNickClick, canDeleteUrl,
   }, [])
 
   function scrollToBottom() {
+    atBottomRef.current = true
     endRef.current?.scrollIntoView()
     setNewCount(0)
   }

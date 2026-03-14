@@ -189,11 +189,6 @@ client.on('privmsg', async ({ nick, target, message }) => {
       client.notice(nick, `PRESIGN_FAIL Unsupported or missing content type`)
       return
     }
-    const identified = await checkIdentified(nick)
-    if (!identified) {
-      client.notice(nick, `PRESIGN_FAIL Not identified with NickServ`)
-      return
-    }
     try {
       const { uploadUrl, publicUrl } = await callPresign(contentType)
       uploadedBy.set(publicUrl, nick)
