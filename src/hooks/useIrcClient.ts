@@ -400,7 +400,6 @@ export function useIrcClient(settings: Settings) {
     const client = new IRC.Client()
     client.connect({ host: HOST, port: PORT, nick: chosenNick, tls: true })
     client.on('registered', () => {
-      console.log('[caps enabled]', (client as any).network?.cap?.enabled)
       setConnected(true)
       setConnStatus('connected')
       resetDelay()
