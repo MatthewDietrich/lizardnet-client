@@ -82,6 +82,7 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
 
 export default function MessageList({ messages, nick, onNickClick, canDeleteUrl, onDeleteMedia, canRedactUrl, onRedactMedia }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const atBottomRef = useRef(true)
@@ -121,6 +122,16 @@ export default function MessageList({ messages, nick, onNickClick, canDeleteUrl,
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    const inner = innerRef.current
+    if (!inner) return
+    const ro = new ResizeObserver(() => {
+      if (atBottomRef.current) endRef.current?.scrollIntoView()
+    })
+    ro.observe(inner)
+    return () => ro.disconnect()
   }, [])
 
   useLayoutEffect(() => {
@@ -205,12 +216,14 @@ export default function MessageList({ messages, nick, onNickClick, canDeleteUrl,
         {filteredMessages.length === 0 && (
           <span className="text-muted">{searchTerm ? 'No results.' : 'No messages yet.'}</span>
         )}
-        {filteredMessages.map((m, i) => {
-          const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
-            m.from !== nick && !!mentionRegex?.test(m.text)
-          return <MessageRow key={i} m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} onDeleteMedia={onDeleteMedia} canDeleteUrl={canDeleteUrl} onRedactMedia={onRedactMedia} canRedactUrl={canRedactUrl} />
-        })}
-        <div ref={endRef} />
+        <div ref={innerRef}>
+          {filteredMessages.map((m, i) => {
+            const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
+              m.from !== nick && !!mentionRegex?.test(m.text)
+            return <MessageRow key={i} m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} onDeleteMedia={onDeleteMedia} canDeleteUrl={canDeleteUrl} onRedactMedia={onRedactMedia} canRedactUrl={canRedactUrl} />
+          })}
+          <div ref={endRef} />
+        </div>
       </div>
       {newCount > 0 && !searchOpen && (
         <button
