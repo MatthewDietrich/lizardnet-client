@@ -209,8 +209,8 @@ client.on('privmsg', async ({ nick, target, message }) => {
   // DELETE <url>
   if (cmd.toUpperCase() === 'DELETE') {
     const url = args[0]
-    if (!url) {
-      client.notice(nick, `DELETE_FAIL Missing URL`)
+    if (!url || !url.startsWith('https://lizardnet-media.s3.amazonaws.com/')) {
+      client.notice(nick, `DELETE_FAIL Invalid or missing URL`)
       return
     }
     const identified = await checkIdentified(nick)

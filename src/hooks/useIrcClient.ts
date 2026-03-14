@@ -412,7 +412,7 @@ export function useIrcClient(settings: Settings) {
     if (!text.trim() || !clientRef.current) return
     if (!checkRateLimit()) return
     clientRef.current.say('#chat', text)
-    addMessage(nick, text)
+    addMessage(nickRef.current, text)
   }
 
   function sendPrivMsg(target: string, text: string) {
