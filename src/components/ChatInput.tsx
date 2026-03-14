@@ -193,7 +193,7 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
                 const now = Date.now()
                 if (now - lastTypingSentRef.current > 3_000) { lastTypingSentRef.current = now; onTyping('active') }
                 if (typingTimerRef.current) clearTimeout(typingTimerRef.current)
-                typingTimerRef.current = setTimeout(() => { typingTimerRef.current = null; onTyping('paused') }, 5_000)
+                typingTimerRef.current = setTimeout(() => { typingTimerRef.current = null; onTyping('paused') }, 3_000)
               }
             }
           }}

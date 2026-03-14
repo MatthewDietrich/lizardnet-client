@@ -363,6 +363,7 @@ export function useIrcClient(settings: Settings) {
 
     client.on('tagmsg', (event: unknown) => {
       const e = event as { nick?: string; target?: string; tags?: Record<string, string> }
+      console.log('[tagmsg]', e)
       if (e.target?.toLowerCase() !== '#chat' || !e.nick || e.nick === nickRef.current) return
       handleTypingUser(e.nick, e.tags?.['+typing'])
     })
@@ -375,6 +376,7 @@ export function useIrcClient(settings: Settings) {
     const client = new IRC.Client()
     client.connect({ host: HOST, port: PORT, nick: chosenNick, tls: true })
     client.on('registered', () => {
+      console.log('[caps enabled]', (client as any).network?.cap?.enabled)
       setConnected(true)
       setConnStatus('connected')
       resetDelay()
@@ -490,7 +492,10 @@ export function useIrcClient(settings: Settings) {
   function setBack() { clientRef.current?.raw('AWAY') }
   function sendOper(name: string, password: string) { clientRef.current?.raw(`OPER ${sanitize(name)} ${sanitize(password)}`) }
   function sendMediaDelete(url: string) { clientRef.current?.raw(`PRIVMSG #chat :MEDIADELETE ${sanitize(url)}`) }
-  function sendTyping(state: 'active' | 'paused' | 'done') { clientRef.current?.raw(`@+typing=${state} TAGMSG #chat`) }
+  function sendTyping(state: 'active' | 'paused' | 'done') {
+    console.log('[sendTyping]', state)
+    clientRef.current?.raw(`@+typing=${state} TAGMSG #chat`)
+  }
 
   function requestFromBot(cmd: string): Promise<string> {
     return new Promise((resolve, reject) => {
