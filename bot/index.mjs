@@ -152,11 +152,33 @@ async function callDelete(url) {
   }
 }
 
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+
+const RATE_WINDOW = 60_000   // 1 minute
+const RATE_MAX    = 10       // max commands per window per nick
+const rateMap = new Map()    // nick -> { count, resetAt }
+
+function rateLimit(nick) {
+  const now = Date.now()
+  let entry = rateMap.get(nick)
+  if (!entry || now >= entry.resetAt) {
+    entry = { count: 0, resetAt: now + RATE_WINDOW }
+    rateMap.set(nick, entry)
+  }
+  entry.count++
+  return entry.count > RATE_MAX
+}
+
 // ─── Command handler ──────────────────────────────────────────────────────────
 
 client.on('privmsg', async ({ nick, target, message }) => {
   // Only handle DMs to the bot
   if (target.toLowerCase() !== BOT_NICK.toLowerCase()) return
+
+  if (rateLimit(nick)) {
+    client.notice(nick, 'Rate limited — try again later')
+    return
+  }
 
   const [cmd, ...args] = message.trim().split(/\s+/)
 

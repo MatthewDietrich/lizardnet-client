@@ -137,8 +137,8 @@ export function parseIrc(text: string, opts: ParseIrcOptions = {}): ReactNode[] 
       if (!isSafeUrl(parts[j])) continue
       const videoId = getYouTubeId(parts[j])
       if (videoId) {
-        nodes.push(
-          <CollapseEmbed key={key++} label="YouTube">
+        nodes.push(mediaWrap(key++,
+          <CollapseEmbed label="YouTube">
             <iframe
               width="400" height="225"
               src={`https://www.youtube-nocookie.com/embed/${videoId}`}
@@ -147,42 +147,42 @@ export function parseIrc(text: string, opts: ParseIrcOptions = {}): ReactNode[] 
               style={{ border: 'none', display: 'block' }}
             />
           </CollapseEmbed>
-        )
+        ))
       }
       const twitterInfo = getTwitterInfo(parts[j])
       if (twitterInfo) {
-        nodes.push(
-          <CollapseEmbed key={key++} label="Twitter">
+        nodes.push(mediaWrap(key++,
+          <CollapseEmbed label="Twitter">
             <TwitterEmbed {...twitterInfo} />
           </CollapseEmbed>
-        )
+        ))
       }
       const bskyUrl = getBlueskyUrl(parts[j])
       if (bskyUrl) {
-        nodes.push(
-          <CollapseEmbed key={key++} label="Bluesky">
+        nodes.push(mediaWrap(key++,
+          <CollapseEmbed label="Bluesky">
             <BlueskyEmbed url={bskyUrl} />
           </CollapseEmbed>
-        )
+        ))
       }
       if (isS3Url(parts[j]) && isAudioUrl(parts[j])) {
         const del = onDelete && canDelete?.(parts[j]) ? onDelete : undefined
         const redact = !del && onRedact && canRedact?.(parts[j]) ? onRedact : undefined
-        nodes.push(<InlineAudio key={key++} src={parts[j]} onDelete={del} onRedact={redact} />)
+        nodes.push(mediaWrap(key++, <InlineAudio src={parts[j]} onDelete={del} onRedact={redact} />))
       } else if (isS3Url(parts[j]) && isVideoUrl(parts[j])) {
         const del = onDelete && canDelete?.(parts[j]) ? onDelete : undefined
         const redact = !del && onRedact && canRedact?.(parts[j]) ? onRedact : undefined
-        nodes.push(<InlineVideo key={key++} src={parts[j]} onDelete={del} onRedact={redact} />)
+        nodes.push(mediaWrap(key++, <InlineVideo src={parts[j]} onDelete={del} onRedact={redact} />))
       } else if (isS3Url(parts[j]) && isImageUrl(parts[j])) {
         const del = onDelete && canDelete?.(parts[j]) ? onDelete : undefined
         const redact = !del && onRedact && canRedact?.(parts[j]) ? onRedact : undefined
-        nodes.push(<InlineImage key={key++} src={parts[j]} onDelete={del} onRedact={redact} />)
+        nodes.push(mediaWrap(key++, <InlineImage src={parts[j]} onDelete={del} onRedact={redact} />))
       } else if (isImageUrl(parts[j])) {
-        nodes.push(
-          <CollapseEmbed key={key++} label="Image">
+        nodes.push(mediaWrap(key++,
+          <CollapseEmbed label="Image">
             <InlineImage src={parts[j]} />
           </CollapseEmbed>
-        )
+        ))
       }
     }
     buffer = ''
@@ -236,8 +236,12 @@ export function parseIrc(text: string, opts: ParseIrcOptions = {}): ReactNode[] 
   return nodes
 }
 
-const MEDIA_TYPES = new Set<unknown>([InlineImage, InlineVideo, InlineAudio, CollapseEmbed])
+const MEDIA_MARKER = 'data-media'
+
+function mediaWrap(key: number, children: ReactNode) {
+  return <span key={key} {...{ [MEDIA_MARKER]: true }} style={{ display: 'contents' }}>{children}</span>
+}
 
 export function isMediaNode(node: ReactNode): boolean {
-  return !!(node && typeof node === 'object' && 'type' in (node as object) && MEDIA_TYPES.has((node as { type: unknown }).type))
+  return !!(node && typeof node === 'object' && 'props' in (node as object) && (node as { props: Record<string, unknown> }).props[MEDIA_MARKER])
 }
