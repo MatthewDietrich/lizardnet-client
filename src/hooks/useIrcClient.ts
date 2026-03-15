@@ -23,6 +23,7 @@ export function useIrcClient(settings: Settings) {
   const nickRef = useRef('')
   const [connected, setConnected] = useState(false)
   const [isOper, setIsOper] = useState(false)
+  const [isIdentified, setIsIdentified] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [users, setUsers] = useState<string[]>([])
   const [ops, setOps] = useState<string[]>([])
@@ -233,6 +234,7 @@ if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2]
         addActive('You have been marked as away.')
         setAwayUsers(prev => new Set([...prev, nickRef.current]))
       }
+      if (cmd === '900') setIsIdentified(true)
       if (cmd === '381') { setIsOper(true); client.raw('MODE #chat +b'); addActive('You are now a server operator.') }
       if (cmd === '464') { addActive('OPER failed: incorrect password.') }
       if (cmd === '491') { addActive('OPER failed: no O-lines for your host.') }
@@ -396,6 +398,7 @@ if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2]
       clientRef.current = null
       setConnected(false)
       setIsOper(false)
+      setIsIdentified(false)
       setUsers([])
       setOps([])
       setBannedUsers([])
@@ -481,6 +484,7 @@ if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2]
     setConnected(false)
     setConnStatus('disconnected')
     setIsOper(false)
+    setIsIdentified(false)
     setUsers([])
     setOps([])
     setBannedUsers([])
@@ -572,7 +576,7 @@ if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2]
   }
 
   return {
-    nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers,
+    nick, connected, connStatus, isOper, isIdentified, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers,
     typingUsers, pmTypingPeers,
     pmConversations, pmUnread, pmPeerRename,
     connect, register, disconnect, sendMessage, sendPrivMsg, sendAction, sendOper, sendMediaDelete, sendTyping, sendEdit,
