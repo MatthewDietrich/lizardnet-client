@@ -10,6 +10,7 @@ interface Props {
   onDeleteMedia?: (url: string) => void
   canRedactUrl?: (url: string) => boolean
   onRedactMedia?: (url: string) => void
+  onEdit?: (msgid: string, newText: string) => void
 }
 
 const EMOJI_ONLY_RE = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u200d\ufe0f\u20e3]+$/u
@@ -33,7 +34,12 @@ function highlight(text: string, term: string) {
 
 const gridRow = { display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: '0.4em' }
 
-const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickClick, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl }: { m: Message; mentioned: boolean; searchTerm: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void; onDeleteMedia?: (url: string) => void; canDeleteUrl?: (url: string) => boolean; onRedactMedia?: (url: string) => void; canRedactUrl?: (url: string) => boolean }) {
+const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, nick, onNickClick, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl, onEdit }: { m: Message; mentioned: boolean; searchTerm: string; nick: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void; onDeleteMedia?: (url: string) => void; canDeleteUrl?: (url: string) => boolean; onRedactMedia?: (url: string) => void; canRedactUrl?: (url: string) => boolean; onEdit?: (msgid: string, newText: string) => void }) {
+  const [hovered, setHovered] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const canEdit = !!(onEdit && m.msgid && m.from === nick && (!m.kind || m.kind === 'chat'))
+
   const ts = <span style={{ fontSize: 11, color: 'var(--c-disabled-fg)', whiteSpace: 'nowrap' }}>{m.ts.toLocaleTimeString()}</span>
   const parsed = searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, { onDelete: onDeleteMedia, canDelete: canDeleteUrl, onRedact: onRedactMedia, canRedact: canRedactUrl })
   const textNodes = Array.isArray(parsed) ? parsed.filter(n => !isMediaNode(n)) : parsed
@@ -42,6 +48,30 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
   const from = m.from && m.from !== '*' && m.kind !== 'event' && onNickClick
     ? <strong style={{ cursor: 'pointer' }} onClick={e => onNickClick(m.from, { x: e.clientX, y: e.clientY })}>{fromText}</strong>
     : <strong>{fromText}</strong>
+  const editedTag = m.edited ? <span title={`Original: "${m.originalText}"`} style={{ fontSize: 10, color: 'var(--c-tertiary)', marginLeft: '0.3em', cursor: 'help' }}>(edited)</span> : null
+  const editBtn = canEdit && hovered && !editing
+    ? <button onClick={() => { setDraft(m.text); setEditing(true) }} style={{ background: 'none', border: 'none', padding: '0 0.3em', fontSize: 12, color: 'var(--c-tertiary)', cursor: 'pointer', lineHeight: 1 }} title="Edit message">✎</button>
+    : null
+
+  function submitEdit() {
+    if (draft.trim() && draft.trim() !== m.text && m.msgid) onEdit?.(m.msgid, draft.trim())
+    setEditing(false)
+  }
+
+  const inlineEditor = (
+    <input
+      autoFocus
+      value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onKeyDown={e => {
+        if (e.key === 'Enter') { submitEdit(); e.preventDefault() }
+        if (e.key === 'Escape') { setEditing(false); e.preventDefault() }
+      }}
+      onBlur={() => setEditing(false)}
+      style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--c-border)', outline: 'none', color: 'inherit', fontFamily: 'inherit', fontSize: 'inherit', width: '100%', padding: 0 }}
+    />
+  )
+
   if (m.kind === 'event') return (
     <div className="fst-italic" style={{ ...gridRow, fontSize: 12, color: 'var(--c-tertiary)' }}>
       {ts}<div>{searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, { onDelete: onDeleteMedia })}</div>
@@ -51,7 +81,7 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
     <div className="fst-italic" style={mentioned ? { ...gridRow, ...mentionStyle } : gridRow}>
       {ts}
       <div>
-        <div>{from} {textNodes}</div>
+        <div>{from} {textNodes}{editedTag}</div>
         {mediaNodes.length > 0 && <div style={{ marginTop: 4 }}>{mediaNodes}</div>}
       </div>
     </div>
@@ -60,19 +90,30 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
     <div style={{ ...gridRow, color: 'var(--c-quaternary)' }}>
       {ts}
       <div>
-        <div><span style={{ opacity: 0.6 }}>[PM]</span> {from}: {textNodes}</div>
+        <div><span style={{ opacity: 0.6 }}>[PM]</span> {from}: {textNodes}{editedTag}</div>
         {mediaNodes.length > 0 && <div style={{ marginTop: 4 }}>{mediaNodes}</div>}
       </div>
     </div>
   )
   const emojiOnly = EMOJI_ONLY_RE.test(m.text.trim())
   return (
-    <div style={mentioned ? { ...gridRow, ...mentionStyle } : gridRow}>
+    <div
+      style={mentioned ? { ...gridRow, ...mentionStyle } : gridRow}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       {ts}
       <div>
         <div>
           {from}:{' '}
-          {emojiOnly ? <span style={{ fontSize: 36, lineHeight: 1.1 }}>{textNodes}</span> : textNodes}
+          {editing
+            ? inlineEditor
+            : emojiOnly
+              ? <span style={{ fontSize: 36, lineHeight: 1.1 }}>{textNodes}</span>
+              : textNodes
+          }
+          {!editing && editedTag}
+          {editBtn}
         </div>
         {mediaNodes.length > 0 && <div style={{ marginTop: 4 }}>{mediaNodes}</div>}
       </div>
@@ -80,7 +121,7 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
   )
 })
 
-export default function MessageList({ messages, nick, onNickClick, canDeleteUrl, onDeleteMedia, canRedactUrl, onRedactMedia }: Props) {
+export default function MessageList({ messages, nick, onNickClick, canDeleteUrl, onDeleteMedia, canRedactUrl, onRedactMedia, onEdit }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
@@ -221,7 +262,7 @@ export default function MessageList({ messages, nick, onNickClick, canDeleteUrl,
           {filteredMessages.map((m, i) => {
             const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
               m.from !== nick && !!mentionRegex?.test(m.text)
-            return <MessageRow key={i} m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} onDeleteMedia={onDeleteMedia} canDeleteUrl={canDeleteUrl} onRedactMedia={onRedactMedia} canRedactUrl={canRedactUrl} />
+            return <MessageRow key={i} m={m} mentioned={mentioned} searchTerm={searchTerm} nick={nick} onNickClick={onNickClick} onDeleteMedia={onDeleteMedia} canDeleteUrl={canDeleteUrl} onRedactMedia={onRedactMedia} canRedactUrl={canRedactUrl} onEdit={onEdit} />
           })}
           <div ref={endRef} />
         </div>

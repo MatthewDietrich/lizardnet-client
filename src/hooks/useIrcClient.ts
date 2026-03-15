@@ -57,7 +57,7 @@ export function useIrcClient(settings: Settings) {
     pmConversations, pmUnread, pmPeerRename,
     setActivePmPeer, addPmMessage, addActiveEvent,
     openPmConversation, closePmConversation, clearPmUnread, clearActivePeerUnread,
-    handlePeerRename, redactInPmConversations,
+    handlePeerRename, redactInPmConversations, editPmMessage, injectPmMsgid,
   } = usePmConversations({ focusedRef, settingsRef, onChannelUnread: () => setUnreadCount(n => n + 1) })
 
   useEffect(() => {
@@ -124,7 +124,7 @@ export function useIrcClient(settings: Settings) {
     setPmTypingPeers(new Set())
   }
 
-  function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat', ts?: Date, isHistory = false) {
+  function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat', ts?: Date, isHistory = false, msgid?: string) {
     const isMention = !isHistory && (kind === 'chat' || kind === 'action') &&
       !!nickRef.current &&
       from !== nickRef.current &&
@@ -139,8 +139,31 @@ export function useIrcClient(settings: Settings) {
       }
     }
     setMessages(prev => {
-      const next = [...prev, { from, text, ts: ts ?? new Date(), kind }]
+      const next = [...prev, { from, text, ts: ts ?? new Date(), kind, msgid }]
       return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next
+    })
+  }
+
+  function editMessageByMsgid(msgid: string, newText: string) {
+    setMessages(prev => {
+      const idx = prev.reduce((found, m, i) => m.msgid === msgid ? i : found, -1)
+      if (idx === -1) return prev
+      const next = [...prev]
+      next[idx] = { ...next[idx], text: newText, edited: true, originalText: next[idx].originalText ?? next[idx].text }
+      return next
+    })
+  }
+
+  function injectChannelMsgid(text: string, msgid: string) {
+    setMessages(prev => {
+      for (let i = prev.length - 1; i >= 0; i--) {
+        if (prev[i].from === nickRef.current && prev[i].text === text && !prev[i].msgid) {
+const next = [...prev]
+          next[i] = { ...next[i], msgid }
+          return next
+        }
+      }
+return prev
     })
   }
 
@@ -151,7 +174,7 @@ export function useIrcClient(settings: Settings) {
   function attachListeners(client: InstanceType<typeof IRC.Client>) {
     client.on('message', (event: unknown) => {
       const { nick: who, target, message, type, tags } = event as { nick: string; target: string; message: string; type: string; tags?: Record<string, string> }
-      if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
+if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
       if (who.toLowerCase() === BOT_NICK.toLowerCase()) {
         if (target?.toLowerCase() === '#chat') {
           const trimmed = message.trim()
@@ -164,19 +187,27 @@ export function useIrcClient(settings: Settings) {
       }
       const isAction = type === 'action'
       const serverTime = tags?.['server-time'] ? new Date(tags['server-time']) : undefined
-      const isHistory = !!(tags?.batch && activeBatchesRef.current.get(tags.batch) === 'chathistory')
+      const isHistory = (event as any).batch?.type === 'chathistory'
+      const isEcho = 'inspircd.org/echo' in (tags ?? {})
+      const msgid = tags?.['msgid']
+      const editOf = tags?.['+draft/edit']
       if (target?.toLowerCase() === '#chat') {
-        addMessage(who, message, isAction ? 'action' : 'chat', serverTime, isHistory)
+        if (editOf) editMessageByMsgid(editOf, message)
+        else if (isEcho) { if (msgid) injectChannelMsgid(message, msgid) }
+        else addMessage(who, message, isAction ? 'action' : 'chat', serverTime, isHistory, msgid)
       } else {
-        addPmMessage(who, who, message, true, isAction ? 'action' : 'chat')
+        const peer = isEcho ? target : who
+        if (editOf) editPmMessage(peer, editOf, message)
+        else if (isEcho) { if (msgid) injectPmMsgid(peer, who, message, msgid) }
+        else addPmMessage(peer, who, message, !isEcho, isAction ? 'action' : 'chat', msgid)
       }
     })
 
     client.on('raw', (event: unknown) => {
       const e = event as { line?: string; from_server?: boolean }
-      if (!e.from_server || !e.line) return
+if (!e.from_server || !e.line) return
 
-      let rest = e.line
+let rest = e.line
       if (rest.startsWith('@')) rest = rest.slice(rest.indexOf(' ') + 1)
       if (rest.startsWith(':')) rest = rest.slice(rest.indexOf(' ') + 1)
       const spaceIdx = rest.indexOf(' ')
@@ -189,7 +220,7 @@ export function useIrcClient(settings: Settings) {
         if (parts[i]) p.push(parts[i])
       }
 
-      if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2])
+if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2])
       if (cmd === 'TOPIC' && p[0]?.toLowerCase() === '#chat' && p[1] !== undefined) {
         setTopicState(p[1])
         addMessage('*', `Topic changed to: ${p[1]}`, 'event')
@@ -398,6 +429,8 @@ export function useIrcClient(settings: Settings) {
   function connectCore(chosenNick: string, password: string, isReconnect: boolean, nickServCommand?: string) {
     cancelReconnect()
     const client = new IRC.Client()
+    ;(client as any).requestCap('message-ids')
+    ;(client as any).requestCap('echo-message')
     client.connect({ host: HOST, port: PORT, nick: chosenNick, tls: true })
     client.on('registered', () => {
       setConnected(true)
@@ -484,11 +517,8 @@ export function useIrcClient(settings: Settings) {
   function sendAction(text: string, target = '#chat') {
     if (!text.trim() || !clientRef.current) return
     clientRef.current.say(target, `\x01ACTION ${text}\x01`)
-    if (target === '#chat') {
-      addMessage(nickRef.current, text, 'action')
-    } else {
-      addPmMessage(target, nickRef.current, text, false, 'action')
-    }
+    if (target === '#chat') addMessage(nickRef.current, text, 'action')
+    else addPmMessage(target, nickRef.current, text, false, 'action')
   }
 
   function redactMediaUrl(url: string) {
@@ -519,6 +549,13 @@ export function useIrcClient(settings: Settings) {
     clientRef.current?.raw(`@+typing=${state} TAGMSG ${target}`)
   }
 
+  function sendEdit(msgid: string, newText: string, target: string) {
+    if (!clientRef.current) return
+    clientRef.current.raw(`@+draft/edit=${msgid} PRIVMSG ${target} :${sanitize(newText)}`)
+    if (target.toLowerCase() === '#chat') editMessageByMsgid(msgid, newText)
+    else editPmMessage(target, msgid, newText)
+  }
+
   function requestFromBot(cmd: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -538,7 +575,7 @@ export function useIrcClient(settings: Settings) {
     nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers,
     typingUsers, pmTypingPeers,
     pmConversations, pmUnread, pmPeerRename,
-    connect, register, disconnect, sendMessage, sendPrivMsg, sendAction, sendOper, sendMediaDelete, sendTyping,
+    connect, register, disconnect, sendMessage, sendPrivMsg, sendAction, sendOper, sendMediaDelete, sendTyping, sendEdit,
     whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ,
     addMessage, addActive, setAway, setBack, redactMediaUrl,
     clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer,

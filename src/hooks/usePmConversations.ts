@@ -38,11 +38,26 @@ export function usePmConversations({ focusedRef, settingsRef, onChannelUnread }:
     }
   }
 
-  function addPmMessage(peer: string, from: string, text: string, isIncoming: boolean, kind: Message['kind'] = 'chat') {
+  function editPmMessage(peer: string, msgid: string, newText: string) {
+    setPmConversations(prev => {
+      const key = resolveKey(prev, peer)
+      const msgs = prev.get(key)
+      if (!msgs) return prev
+      const idx = msgs.reduce((found, m, i) => m.msgid === msgid ? i : found, -1)
+      if (idx === -1) return prev
+      const next = new Map(prev)
+      const updated = [...msgs]
+      updated[idx] = { ...updated[idx], text: newText, edited: true, originalText: updated[idx].originalText ?? updated[idx].text }
+      next.set(key, updated)
+      return next
+    })
+  }
+
+  function addPmMessage(peer: string, from: string, text: string, isIncoming: boolean, kind: Message['kind'] = 'chat', msgid?: string) {
     setPmConversations(prev => {
       const key = resolveKey(prev, peer)
       const next = new Map(prev)
-      next.set(key, [...(next.get(key) ?? []), { from, text, ts: new Date(), kind }])
+      next.set(key, [...(next.get(key) ?? []), { from, text, ts: new Date(), kind, msgid }])
       return next
     })
     if (isIncoming && !(focusedRef.current && activePmPeerRef.current?.toLowerCase() === peer.toLowerCase())) {
@@ -129,6 +144,24 @@ export function usePmConversations({ focusedRef, settingsRef, onChannelUnread }:
     }
   }
 
+  function injectPmMsgid(peer: string, from: string, text: string, msgid: string) {
+    setPmConversations(prev => {
+      const key = resolveKey(prev, peer)
+      const msgs = prev.get(key)
+      if (!msgs) return prev
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].from === from && msgs[i].text === text && !msgs[i].msgid) {
+          const updated = [...msgs]
+          updated[i] = { ...updated[i], msgid }
+          const next = new Map(prev)
+          next.set(key, updated)
+          return next
+        }
+      }
+      return prev
+    })
+  }
+
   function redactInPmConversations(url: string, replace: (text: string) => string) {
     setPmConversations(prev => {
       let changed = false
@@ -146,6 +179,6 @@ export function usePmConversations({ focusedRef, settingsRef, onChannelUnread }:
     activePmPeerRef,
     setActivePmPeer, addPmMessage, addEventToPm, addActiveEvent,
     openPmConversation, closePmConversation, clearPmUnread, clearActivePeerUnread,
-    handlePeerRename, redactInPmConversations,
+    handlePeerRename, redactInPmConversations, editPmMessage, injectPmMsgid,
   }
 }

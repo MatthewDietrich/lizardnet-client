@@ -19,7 +19,7 @@ import { TypingIndicator } from './components/TypingIndicator'
 
 export default function App() {
   const { settings, setSetting } = useSettings()
-  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, typingUsers, pmTypingPeers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete, sendTyping, requestFromBot } = useIrcClient(settings)
+  const { nick, connected, connStatus, isOper, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, typingUsers, pmTypingPeers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete, sendTyping, sendEdit, requestFromBot } = useIrcClient(settings)
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -94,6 +94,7 @@ export default function App() {
               onDeleteMedia={url => deleteFromS3(url, requestFromBot).then(() => { redactMediaUrl(url) }).catch(err => addActive(`Failed to delete: ${err.message.includes('identified') ? 'Logged in as guest. Please /register or /identify. Type /help for help' : err.message}`))}
               canRedactUrl={() => isOper || ops.includes(nick)}
               onRedactMedia={url => { redactMediaUrl(url); sendMediaDelete(url) }}
+            onEdit={(msgid, newText) => sendEdit(msgid, newText, activeTab === '#chat' ? '#chat' : activeTab)}
             />
           </ErrorBoundary>
         </div>
