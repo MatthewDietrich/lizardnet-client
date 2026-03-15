@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { RULES } from '../lib/rules'
 
 const NICK_RE = /^[a-zA-Z\[\]\\`^{|}_][a-zA-Z0-9\[\]\\`^{|}_\-]*$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -60,11 +61,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
             <div className="modal-body">
               <h4>RULES</h4>
               <ol className="mb-4">
-                <li>You must be 18 or over to use this server</li>
-                <li>Treat others the way you would want to be treated</li>
-                <li>Don't be racist, sexist, homophobic, transphobic, etc.</li>
-                <li>Don't spam</li>
-                <li>Use your common sense</li>
+                {RULES.map((r, i) => <li key={i}>{r}</li>)}
               </ol>
 
               <ul className="nav nav-tabs mb-3">

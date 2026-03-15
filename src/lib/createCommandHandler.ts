@@ -9,8 +9,13 @@ export const HELP_LINES = [
   '/away [message]              — set yourself as away',
   '/back                        — return from away',
   '/oper <name> <password>      — authenticate as a server operator',
+  '/rules                       — show server rules',
   '/help                        — show this help',
 ]
+
+import { RULES } from './rules'
+
+export const RULES_LINES = ['Rules:', ...RULES.map((r, i) => `${i + 1}. ${r}`)]
 
 interface Options {
   activeTab: string
@@ -76,8 +81,9 @@ export function createCommandHandler({
       setAway(text.slice(6))
       return
     }
-    if (text === '/back') { setBack(); return }
-    if (text === '/help') { for (const line of HELP_LINES) addActive(line); return }
+    if (text.trim() === '/back') { setBack(); return }
+    if (text.trim() === '/rules') { for (const line of RULES_LINES) addActive(line); return }
+    if (text.trim() === '/help') { for (const line of HELP_LINES) addActive(line); return }
     if (text.startsWith('/')) { addActive('Invalid command. Type /help for a list of commands.'); return }
     if (activeTab !== '#chat') { sendPrivMsg(activeTab, text); return }
     sendMessage(text)

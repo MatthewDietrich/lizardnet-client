@@ -38,7 +38,8 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, nick, on
   const [hovered, setHovered] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
-  const canEdit = !!(onEdit && m.msgid && m.from === nick && (!m.kind || m.kind === 'chat'))
+  const isMediaOnly = /^https:\/\/lizardnet-media\.s3\.amazonaws\.com\/\S+$/.test(m.text.trim())
+  const canEdit = !!(onEdit && m.msgid && m.from === nick && (!m.kind || m.kind === 'chat') && !isMediaOnly)
 
   const ts = <span style={{ fontSize: 11, color: 'var(--c-disabled-fg)', whiteSpace: 'nowrap' }}>{m.ts.toLocaleTimeString()}</span>
   const parsed = searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, { onDelete: onDeleteMedia, canDelete: canDeleteUrl, onRedact: onRedactMedia, canRedact: canRedactUrl })
