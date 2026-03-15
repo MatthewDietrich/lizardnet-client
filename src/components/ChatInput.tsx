@@ -25,6 +25,8 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragCounterRef = useRef(0)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastTypingSentRef = useRef(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -108,6 +110,36 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
     handleFile(file)
   }
 
+  useEffect(() => {
+    function onDragEnter(e: DragEvent) {
+      if (!e.dataTransfer?.types.includes('Files')) return
+      dragCounterRef.current++
+      setIsDragging(true)
+    }
+    function onDragLeave() {
+      if (--dragCounterRef.current === 0) setIsDragging(false)
+    }
+    function onDragOver(e: DragEvent) { e.preventDefault() }
+    function onDrop(e: DragEvent) {
+      e.preventDefault()
+      dragCounterRef.current = 0
+      setIsDragging(false)
+      if (!connected || uploadProgress !== null) return
+      const file = e.dataTransfer?.files[0]
+      if (file) handleFile(file)
+    }
+    document.addEventListener('dragenter', onDragEnter)
+    document.addEventListener('dragleave', onDragLeave)
+    document.addEventListener('dragover', onDragOver)
+    document.addEventListener('drop', onDrop)
+    return () => {
+      document.removeEventListener('dragenter', onDragEnter)
+      document.removeEventListener('dragleave', onDragLeave)
+      document.removeEventListener('dragover', onDragOver)
+      document.removeEventListener('drop', onDrop)
+    }
+  }, [connected, uploadProgress])
+
   function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault()
     if (!input.trim()) return
@@ -169,6 +201,13 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
 
   return (
     <div style={{ position: 'relative' }}>
+      {isDragging && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+          <div style={{ fontSize: 20, color: '#fff', fontStyle: 'italic', border: '2px dashed rgba(255,255,255,0.6)', borderRadius: 8, padding: '24px 48px' }}>
+            Drop to upload
+          </div>
+        </div>
+      )}
       {showPicker && (
         <div ref={pickerRef} style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: 8, zIndex: 100 }}>
           <EmojiPicker onEmojiClick={onEmojiClick} theme={Theme.DARK} lazyLoadEmojis />
