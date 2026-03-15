@@ -90,7 +90,7 @@ export default function App() {
               messages={activeMessages}
               nick={nick}
               onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
-              canDeleteUrl={url => hasUploadedUrl(url) || isOper || ops.includes(nick)}
+              canDeleteUrl={url => isIdentified && (hasUploadedUrl(url) || isOper || ops.includes(nick))}
               onDeleteMedia={url => deleteFromS3(url, requestFromBot).then(() => { redactMediaUrl(url) }).catch(err => addActive(`Failed to delete: ${err.message.includes('identified') ? 'Logged in as guest. Please /register or /identify. Type /help for help' : err.message}`))}
               canRedactUrl={() => isOper || ops.includes(nick)}
               onRedactMedia={url => { redactMediaUrl(url); sendMediaDelete(url) }}
