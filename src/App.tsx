@@ -114,8 +114,8 @@ export default function App() {
         onClose={closeTab}
       />
 
-      <TypingIndicator users={activeTab === '#chat' ? typingUsers : pmTypingPeers.has(activeTab) ? [activeTab] : []} />
       <div className={pmPeers.length > 0 ? 'mt-2' : 'mt-1'}>
+        <TypingIndicator users={activeTab === '#chat' ? typingUsers : pmTypingPeers.has(activeTab) ? [activeTab] : []} />
         <ChatInput ref={chatInputRef} connected={connected} users={users} commands={HELP_LINES.map(l => l.match(/^(\S+)/)?.[1] ?? '')} onSend={handleSend} botRequest={requestFromBot} onTyping={connected ? state => sendTyping(state, activeTab) : undefined} />
       </div>
 
