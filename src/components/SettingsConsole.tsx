@@ -61,26 +61,46 @@ export default function SettingsConsole({ onClose, settings, onChangeSetting, th
 
               {tab === 'notifications' && (
                 <div className="d-flex flex-column gap-3">
-                  <div className="d-flex align-items-center justify-content-between">
-                    <p className="small mb-0" style={{ color: 'var(--c-tertiary)' }}>Sound</p>
-                    <button
-                      className="btn btn-sm btn-outline-secondary py-0"
-                      style={{ fontSize: 11 }}
-                      onClick={playNotificationSound}
-                    >
-                      Test sound
-                    </button>
-                  </div>
-                  <Toggle
-                    label="Sound on mention"
-                    checked={settings.soundMentions}
-                    onChange={v => onChangeSetting('soundMentions', v)}
-                  />
-                  <Toggle
-                    label="Sound on private message"
-                    checked={settings.soundPm}
-                    onChange={v => onChangeSetting('soundPm', v)}
-                  />
+                  <p className="small mb-0" style={{ color: 'var(--c-tertiary)' }}>Sound</p>
+                  {([
+                    ['mentionSound', 'soundMentions', 'Mention'],
+                    ['pmSound', 'soundPm', 'Private message'],
+                  ] as const).map(([soundKey, enabledKey, label]) => (
+                    <div key={soundKey}>
+                      <div className="d-flex align-items-center justify-content-between mb-1">
+                        <Toggle
+                          label={label}
+                          checked={settings[enabledKey]}
+                          onChange={v => onChangeSetting(enabledKey, v)}
+                        />
+                        <button
+                          className="btn btn-sm btn-outline-secondary py-0 ms-3"
+                          style={{ fontSize: 11, flexShrink: 0 }}
+                          onClick={() => playNotificationSound(settings[soundKey])}
+                        >
+                          Test
+                        </button>
+                      </div>
+                      <div className="d-flex gap-2">
+                        {(['atonal', 'tonal'] as const).map(s => (
+                          <button
+                            key={s}
+                            className="btn btn-sm"
+                            onClick={() => onChangeSetting(soundKey, s)}
+                            style={{
+                              flex: 1,
+                              background: settings[soundKey] === s ? 'rgba(var(--c-primary-rgb), 0.12)' : 'transparent',
+                              border: '1px solid ' + (settings[soundKey] === s ? 'var(--c-primary)' : 'var(--c-border)'),
+                              color: 'var(--c-primary)',
+                              textTransform: 'capitalize',
+                            }}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                   <p className="small mb-0 mt-1" style={{ color: 'var(--c-tertiary)' }}>Desktop</p>
                   <Toggle
                     label="Desktop notifications"

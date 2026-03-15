@@ -130,7 +130,7 @@ export function useIrcClient(settings: Settings) {
       from !== nickRef.current &&
       new RegExp(`\\b${escapeRegex(nickRef.current)}\\b`, 'i').test(text)
     if (isMention) {
-      if (settingsRef.current.soundMentions) playNotificationSound()
+      if (settingsRef.current.soundMentions) playNotificationSound(settingsRef.current.mentionSound)
       if (!focusedRef.current) {
         setUnreadCount(n => n + 1)
         if (settingsRef.current.desktopNotifications && Notification.permission === 'granted') {

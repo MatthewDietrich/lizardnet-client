@@ -4,12 +4,16 @@ export interface Settings {
   soundMentions: boolean
   soundPm: boolean
   desktopNotifications: boolean
+  mentionSound: 'atonal' | 'tonal'
+  pmSound: 'atonal' | 'tonal'
 }
 
 const DEFAULTS: Settings = {
   soundMentions: true,
   soundPm: true,
   desktopNotifications: false,
+  mentionSound: 'atonal',
+  pmSound: 'tonal',
 }
 
 function load(): Settings {

@@ -46,7 +46,7 @@ export function usePmConversations({ focusedRef, settingsRef, onChannelUnread }:
       return next
     })
     if (isIncoming && !(focusedRef.current && activePmPeerRef.current?.toLowerCase() === peer.toLowerCase())) {
-      if (settingsRef.current.soundPm) playNotificationSound()
+      if (settingsRef.current.soundPm) playNotificationSound(settingsRef.current.pmSound)
       if (!focusedRef.current) {
         onChannelUnread()
         if (settingsRef.current.desktopNotifications && Notification.permission === 'granted') {
