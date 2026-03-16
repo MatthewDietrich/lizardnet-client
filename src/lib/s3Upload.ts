@@ -12,13 +12,13 @@ export async function uploadToS3(file: File, botRequest: BotRequest, onProgress?
   const MAX_SIZE = 50 * 1024 * 1024
   if (file.size > MAX_SIZE) throw new Error('File too large (max 50MB)')
 
-  // reply: "PRESIGN_OK <uploadUrl> <publicUrl>"
+  // reply: "PRESIGN_OK <uploadUrl><publicUrl>" (URLs concatenated, public URL starts with BUCKET_URL)
   const reply = await botRequest(`PRESIGN ${file.type}`)
   const rest = reply.slice('PRESIGN_OK '.length)
-  const spaceIdx = rest.lastIndexOf(' ')
-  if (spaceIdx < 0) throw new Error('Invalid bot response')
-  const uploadUrl = rest.slice(0, spaceIdx)
-  const publicUrl = rest.slice(spaceIdx + 1)
+  const splitIdx = rest.indexOf(BUCKET_URL)
+  if (splitIdx < 0) throw new Error(`Invalid bot response: ${JSON.stringify(rest)}`)
+  const uploadUrl = rest.slice(0, splitIdx)
+  const publicUrl = rest.slice(splitIdx)
 
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest()
