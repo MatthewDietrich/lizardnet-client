@@ -16,7 +16,7 @@ export type { ConnStatus } from './useReconnect'
 const HOST = 'irc.lizard.fun'
 const PORT = 7003
 const RATE_LIMIT = { messages: 5, windowMs: 4000 }
-const BOT_NICK = 'MediaBot'
+import { BOT_NICK } from '../lib/constants'
 const SERVICES_HOST = 'services.int'
 
 export function useIrcClient(settings: Settings) {

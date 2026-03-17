@@ -1,7 +1,6 @@
 import { useRef } from 'react'
 import IRC from 'irc-framework'
-
-const BOT_NICK = 'MediaBot'
+import { BOT_NICK } from '../lib/constants'
 
 interface Options {
   clientRef: React.MutableRefObject<InstanceType<typeof IRC.Client> | null>
