@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 // ── Minimal simulation of the useBotProtocol state machine ───────────────────
 // Mirrors the ref-based logic in useBotProtocol exactly so we can test the
