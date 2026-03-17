@@ -1,18 +1,19 @@
 import { useState, useRef, useEffect } from 'react'
 import IRC from 'irc-framework'
-import type { Message } from '../types'
 import type { Settings } from './useSettings'
-import { playNotificationSound } from '../lib/notification'
 import { encryptCreds, decryptCreds } from '../lib/credentials'
 import { useReconnect } from './useReconnect'
 import { usePmConversations } from './usePmConversations'
+import { useIrcMessages } from './useIrcMessages'
+import { useIrcUsers } from './useIrcUsers'
+import { useBotProtocol } from './useBotProtocol'
+import { useIrcModeration } from './useIrcModeration'
 
 export type { ConnStatus } from './useReconnect'
 
 const HOST = 'irc.lizard.fun'
 const PORT = 7003
 const RATE_LIMIT = { messages: 5, windowMs: 4000 }
-const MAX_MESSAGES = 2000
 const BOT_NICK = 'MediaBot'
 const SERVICES_HOST = 'services.int'
 
@@ -23,37 +24,22 @@ export function useIrcClient(settings: Settings) {
   const [nick, setNick] = useState('')
   const nickRef = useRef('')
   const [connected, setConnected] = useState(false)
-  const [isOper, setIsOper] = useState(false)
   const [isIdentified, setIsIdentified] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [users, setUsers] = useState<string[]>([])
-  const [ops, setOps] = useState<string[]>([])
-  const opsRef = useRef<string[]>([])
-  useEffect(() => { opsRef.current = ops }, [ops])
-  const [bannedUsers, setBannedUsers] = useState<string[]>([])
-  const [topic, setTopicState] = useState('')
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [awayUsers, setAwayUsers] = useState<Set<string>>(new Set())
-  const [typingUsers, setTypingUsers] = useState<string[]>([])
-  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-  const [pmTypingPeers, setPmTypingPeers] = useState<Set<string>>(new Set())
-  const pmTypingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-
   const focusedRef = useRef(document.hasFocus())
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
-  const botRequestsRef = useRef<{ resolve: (msg: string) => void; reject: (e: Error) => void }[]>([])
-  const botBufferRef = useRef('')
   const credentialsRef = useRef<Awaited<ReturnType<typeof encryptCreds>> | null>(null)
   const sendTimestampsRef = useRef<number[]>([])
   const activeBatchesRef = useRef<Map<string, string>>(new Map())
-  const pendingBansRef = useRef<Set<string>>(new Set())
-  const silentWhoisRef = useRef<Set<string>>(new Set())
-  const maskToNickRef = useRef<Map<string, string>>(new Map())
 
-  function escapeRegex(s: string) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
   function sanitize(s: string) { return s.replace(/[\r\n]/g, '') }
 
   const { connStatus, setConnStatus, connStatusRef, manualDisconnectRef, schedule, cancel: cancelReconnect, resetDelay } = useReconnect()
+
+  const {
+    messages,
+    unreadCount, setUnreadCount,
+    addMessage, editMessageByMsgid, injectChannelMsgid, redactChannelUrl,
+  } = useIrcMessages({ nickRef, focusedRef, settingsRef })
 
   const {
     pmConversations, pmUnread, pmPeerRename,
@@ -61,6 +47,26 @@ export function useIrcClient(settings: Settings) {
     openPmConversation, closePmConversation, clearPmUnread, clearActivePeerUnread,
     handlePeerRename, redactInPmConversations, editPmMessage, injectPmMsgid,
   } = usePmConversations({ focusedRef, settingsRef, onChannelUnread: () => setUnreadCount(n => n + 1) })
+
+  const {
+    users, setUsers,
+    ops, setOps,
+    bannedUsers, setBannedUsers,
+    awayUsers, setAwayUsers,
+    isOper, setIsOper,
+    topic, setTopicState,
+    typingUsers, handleTypingUser,
+    pmTypingPeers, handlePmTyping,
+    resetUsers,
+  } = useIrcUsers()
+
+  const { requestFromBot, handleBotNotice } = useBotProtocol({ clientRef })
+
+  const {
+    silentWhoisRef, maskToNickRef,
+    handleWhoisForBan,
+    kick, ban, unban, op, deop,
+  } = useIrcModeration({ clientRef })
 
   useEffect(() => {
     function onFocus() {
@@ -87,96 +93,20 @@ export function useIrcClient(settings: Settings) {
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [])
 
-  function handleTypingUser(who: string, state: string | undefined) {
-    const timers = typingTimersRef.current
-    clearTimeout(timers.get(who))
-    timers.delete(who)
-    if (!state || state === 'done') {
-      setTypingUsers(prev => prev.filter(u => u !== who))
-      return
-    }
-    setTypingUsers(prev => prev.includes(who) ? prev : [...prev, who])
-    timers.set(who, setTimeout(() => {
-      timers.delete(who)
-      setTypingUsers(prev => prev.filter(u => u !== who))
-    }, 6_000))
-  }
-
-  function handlePmTyping(who: string, state: string | undefined) {
-    const timers = pmTypingTimersRef.current
-    clearTimeout(timers.get(who))
-    timers.delete(who)
-    if (!state || state === 'done') {
-      setPmTypingPeers(prev => { const s = new Set(prev); s.delete(who); return s })
-      return
-    }
-    setPmTypingPeers(prev => new Set([...prev, who]))
-    timers.set(who, setTimeout(() => {
-      timers.delete(who)
-      setPmTypingPeers(prev => { const s = new Set(prev); s.delete(who); return s })
-    }, 6_000))
-  }
-
-  function clearAllTyping() {
-    for (const t of typingTimersRef.current.values()) clearTimeout(t)
-    typingTimersRef.current.clear()
-    setTypingUsers([])
-    for (const t of pmTypingTimersRef.current.values()) clearTimeout(t)
-    pmTypingTimersRef.current.clear()
-    setPmTypingPeers(new Set())
-  }
-
-  function addMessage(from: string, text: string, kind: 'chat' | 'event' | 'pm' | 'action' = 'chat', ts?: Date, isHistory = false, msgid?: string) {
-    const isMention = !isHistory && (kind === 'chat' || kind === 'action') &&
-      !!nickRef.current &&
-      from !== nickRef.current &&
-      new RegExp(`\\b${escapeRegex(nickRef.current)}\\b`, 'i').test(text)
-    if (isMention) {
-      if (settingsRef.current.soundMentions) playNotificationSound(settingsRef.current.mentionSound)
-      if (!focusedRef.current) {
-        setUnreadCount(n => n + 1)
-        if (settingsRef.current.desktopNotifications && Notification.permission === 'granted') {
-          new Notification(`${from} mentioned you`, { body: text, silent: true })
-        }
-      }
-    }
-    setMessages(prev => {
-      const next = [...prev, { id: crypto.randomUUID(), from, text, ts: ts ?? new Date(), kind, msgid }]
-      return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next
-    })
-  }
-
-  function editMessageByMsgid(msgid: string, newText: string) {
-    setMessages(prev => {
-      const idx = prev.reduce((found, m, i) => m.msgid === msgid ? i : found, -1)
-      if (idx === -1) return prev
-      const next = [...prev]
-      next[idx] = { ...next[idx], text: newText, edited: true, originalText: next[idx].originalText ?? next[idx].text }
-      return next
-    })
-  }
-
-  function injectChannelMsgid(text: string, msgid: string) {
-    setMessages(prev => {
-      for (let i = prev.length - 1; i >= 0; i--) {
-        if (prev[i].from === nickRef.current && prev[i].text === text && !prev[i].msgid) {
-const next = [...prev]
-          next[i] = { ...next[i], msgid }
-          return next
-        }
-      }
-return prev
-    })
-  }
-
   function addActive(text: string) {
     addActiveEvent(text, () => addMessage('*', text, 'event'))
+  }
+
+  function redactMediaUrl(url: string) {
+    const replace = (text: string) => text.replace(url, '[media deleted]')
+    redactChannelUrl(url, replace)
+    redactInPmConversations(url, replace)
   }
 
   function attachListeners(client: InstanceType<typeof IRC.Client>) {
     client.on('message', (event: unknown) => {
       const { nick: who, target, message, type, tags } = event as { nick: string; target: string; message: string; type: string; tags?: Record<string, string> }
-if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
+      if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
       if (who.toLowerCase() === BOT_NICK.toLowerCase()) {
         if (target?.toLowerCase() === '#chat') {
           const trimmed = message.trim()
@@ -207,9 +137,8 @@ if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv'
 
     client.on('raw', (event: unknown) => {
       const e = event as { line?: string; from_server?: boolean }
-if (!e.from_server || !e.line) return
-
-let rest = e.line
+      if (!e.from_server || !e.line) return
+      let rest = e.line
       if (rest.startsWith('@')) rest = rest.slice(rest.indexOf(' ') + 1)
       if (rest.startsWith(':')) rest = rest.slice(rest.indexOf(' ') + 1)
       const spaceIdx = rest.indexOf(' ')
@@ -222,7 +151,7 @@ let rest = e.line
         if (parts[i]) p.push(parts[i])
       }
 
-if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2])
+      if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2])
       if (cmd === 'TOPIC' && p[0]?.toLowerCase() === '#chat' && p[1] !== undefined) {
         setTopicState(p[1])
         addMessage('*', `Topic changed to: ${p[1]}`, 'event')
@@ -237,15 +166,9 @@ if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2]
       }
       if (cmd === '900') setIsIdentified(true)
       if (cmd === '381') { setIsOper(true); client.raw('MODE #chat +b'); addActive('You are now a server operator.') }
-      if (cmd === '464') { addActive('OPER failed: incorrect password.') }
-      if (cmd === '491') { addActive('OPER failed: no O-lines for your host.') }
-      if (cmd === '311' && p[1] && pendingBansRef.current.has(p[1])) {
-        const mask = `*!${p[2]}@${p[3]}`
-        pendingBansRef.current.delete(p[1])
-        maskToNickRef.current.set(mask, p[1])
-        clientRef.current?.raw(`MODE #chat +b ${mask}`)
-        clientRef.current?.raw(`KICK #chat ${p[1]}`)
-      }
+      if (cmd === '464') addActive('OPER failed: incorrect password.')
+      if (cmd === '491') addActive('OPER failed: no O-lines for your host.')
+      if (cmd === '311') handleWhoisForBan(p)
       if (cmd === '474' || cmd === '465') addActive('You have been banned.')
       if (cmd === '367' && p[1]?.toLowerCase() === '#chat' && p[2]) {
         setBannedUsers(prev => prev.includes(p[2]) ? prev : [...prev, p[2]])
@@ -366,31 +289,13 @@ if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2]
 
     client.on('notice', (event: unknown) => {
       const e = event as { nick?: string; hostname?: string; message?: string; notice?: string }
-      let text = e.message ?? e.notice ?? ''
+      const text = e.message ?? e.notice ?? ''
       if (!text) return
-      if (e.nick?.toLowerCase() === BOT_NICK.toLowerCase()) {
-        botBufferRef.current += text
-        const buf = botBufferRef.current
-        // PRESIGN_OK is complete when it ends with the public S3 URL (no trailing content)
-        const isPresignOk = buf.startsWith('PRESIGN_OK ') && /https:\/\/lizardnet-media\.s3\.amazonaws\.com\/[0-9a-f-]+\.\w+$/.test(buf)
-        const isComplete = isPresignOk || buf === 'DELETE_OK' || /^(PRESIGN_FAIL|DELETE_FAIL)/.test(buf)
-        if (!isComplete) return
-        botBufferRef.current = ''
-        const pending = botRequestsRef.current.shift()
-        if (pending) {
-          if (isPresignOk || buf === 'DELETE_OK') {
-            pending.resolve(buf)
-          } else {
-            pending.reject(new Error(buf.replace(/^(PRESIGN_FAIL|DELETE_FAIL)\s*/, '')))
-          }
-        }
-        return
-      }
+      if (handleBotNotice(e.nick, text)) return
       if (e.nick?.toLowerCase() === 'nickserv' && e.hostname === SERVICES_HOST) {
         if (/^Last login from:/i.test(text)) return
         if (/^Welcome to /i.test(text)) return
-        text = text.replace(/\/msg NickServ IDENTIFY(?:\s+\S+)?\s+(\S+)/gi, '/identify $1')
-        addMessage('NickServ', text, 'event')
+        addMessage('NickServ', text.replace(/\/msg NickServ IDENTIFY(?:\s+\S+)?\s+(\S+)/gi, '/identify $1'), 'event')
       }
     })
 
@@ -398,13 +303,8 @@ if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2]
       if (clientRef.current !== client) return
       clientRef.current = null
       setConnected(false)
-      setIsOper(false)
       setIsIdentified(false)
-      setUsers([])
-      setOps([])
-      setBannedUsers([])
-      setAwayUsers(new Set())
-      clearAllTyping()
+      resetUsers()
       if (manualDisconnectRef.current) {
         manualDisconnectRef.current = false
         setConnStatus('disconnected')
@@ -484,13 +384,8 @@ if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2]
     clientRef.current = null
     setConnected(false)
     setConnStatus('disconnected')
-    setIsOper(false)
     setIsIdentified(false)
-    setUsers([])
-    setOps([])
-    setBannedUsers([])
-    setAwayUsers(new Set())
-    clearAllTyping()
+    resetUsers()
     addMessage('*', 'Disconnected.', 'event')
   }
 
@@ -526,23 +421,7 @@ if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2]
     else addPmMessage(target, nickRef.current, text, false, 'action')
   }
 
-  function redactMediaUrl(url: string) {
-    const replace = (text: string) => text.replace(url, '[media deleted]')
-    setMessages(prev => prev.map(m => m.text.includes(url) ? { ...m, text: replace(m.text) } : m))
-    redactInPmConversations(url, replace)
-  }
-
   function whois(target: string) { clientRef.current?.raw(`WHOIS ${sanitize(target)}`) }
-  function kick(target: string) { clientRef.current?.raw(`KICK #chat ${sanitize(target)}`) }
-  function ban(target: string) {
-    const safe = sanitize(target)
-    pendingBansRef.current.add(safe)
-    silentWhoisRef.current.add(safe)
-    clientRef.current?.raw(`WHOIS ${safe}`)
-  }
-  function unban(mask: string) { clientRef.current?.raw(`MODE #chat -b ${sanitize(mask)}`) }
-  function op(target: string) { clientRef.current?.raw(`MODE #chat +o ${sanitize(target)}`) }
-  function deop(target: string) { clientRef.current?.raw(`MODE #chat -o ${sanitize(target)}`) }
   function changeTopic(newTopic: string) { clientRef.current?.raw(`TOPIC #chat :${sanitize(newTopic)}`) }
   function changeNick(newNick: string) { clientRef.current?.raw(`NICK ${sanitize(newNick).replace(/ /g, '_')}`) }
   function sayNickServ(text: string) { clientRef.current?.say('NickServ', text) }
@@ -559,21 +438,6 @@ if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2]
     clientRef.current.raw(`@+draft/edit=${msgid} PRIVMSG ${target} :${sanitize(newText)}`)
     if (target.toLowerCase() === '#chat') editMessageByMsgid(msgid, newText)
     else editPmMessage(target, msgid, newText)
-  }
-
-  function requestFromBot(cmd: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        const idx = botRequestsRef.current.findIndex(r => r.resolve === resolve)
-        if (idx >= 0) botRequestsRef.current.splice(idx, 1)
-        reject(new Error('Bot request timed out'))
-      }, 15_000)
-      botRequestsRef.current.push({
-        resolve: (msg: string) => { clearTimeout(timeout); resolve(msg) },
-        reject: (e: Error) => { clearTimeout(timeout); reject(e) },
-      })
-      clientRef.current?.say(BOT_NICK, cmd)
-    })
   }
 
   return {
