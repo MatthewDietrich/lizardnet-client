@@ -4,6 +4,11 @@ import type { Settings } from './useSettings'
 import { encryptCreds, decryptCreds } from '../lib/credentials'
 import { useReconnect } from './useReconnect'
 import { CHANNEL } from '../lib/constants'
+import type {
+  IrcMessageEvent, IrcRawEvent, IrcTopicEvent, IrcErrorEvent, IrcBanlistEvent,
+  IrcModeEvent, IrcNickPresenceEvent, IrcPartEvent, IrcQuitEvent,
+  IrcUserlistEvent, IrcNickEvent, IrcNoticeEvent, IrcTagmsgEvent,
+} from '../types/ircEvents'
 import { usePmConversations } from './usePmConversations'
 import { useIrcMessages } from './useIrcMessages'
 import { useIrcUsers } from './useIrcUsers'
@@ -106,7 +111,7 @@ export function useIrcClient(settings: Settings) {
 
   function attachListeners(client: InstanceType<typeof IRC.Client>) {
     client.on('message', (event: unknown) => {
-      const { nick: who, target, message, type, tags } = event as { nick: string; target: string; message: string; type: string; tags?: Record<string, string> }
+      const { nick: who, target, message, type, tags } = event as IrcMessageEvent
       if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
       if (who.toLowerCase() === BOT_NICK.toLowerCase()) {
         if (target?.toLowerCase() === CHANNEL) {
@@ -137,7 +142,7 @@ export function useIrcClient(settings: Settings) {
     })
 
     client.on('raw', (event: unknown) => {
-      const e = event as { line?: string; from_server?: boolean }
+      const e = event as IrcRawEvent
       if (!e.from_server || !e.line) return
       const { cmd } = parseRawLine(e.line)
       if (cmd === '381') { setIsOper(true); client.raw('MODE #chat +b'); addActive('You are now a server operator.') }
@@ -145,7 +150,7 @@ export function useIrcClient(settings: Settings) {
     })
 
     client.on('topic', (event: unknown) => {
-      const e = event as { channel: string; topic: string; nick?: string }
+      const e = event as IrcTopicEvent
       if (e.channel?.toLowerCase() !== CHANNEL) return
       setTopicState(e.topic ?? '')
       if (e.nick) addMessage('*', `Topic changed to: ${e.topic}`, 'event')
@@ -154,13 +159,13 @@ export function useIrcClient(settings: Settings) {
     client.on('loggedin', () => { setIsIdentified(true) })
 
     client.on('irc error', (event: unknown) => {
-      const e = event as { command?: string }
+      const e = event as IrcErrorEvent
       if (e.command === '464') addActive('OPER failed: incorrect password.')
       if (e.command === '474' || e.command === '465') addActive('You have been banned.')
     })
 
     client.on('banlist', (event: unknown) => {
-      const e = event as { channel: string; bans: Array<{ ban: string }> }
+      const e = event as IrcBanlistEvent
       if (e.channel?.toLowerCase() !== CHANNEL) return
       for (const b of e.bans ?? []) {
         if (b.ban) setBannedUsers(prev => prev.includes(b.ban) ? prev : [...prev, b.ban])
@@ -181,7 +186,7 @@ export function useIrcClient(settings: Settings) {
     })
 
     client.on('mode', (event: unknown) => {
-      const e = event as { target?: string; modes?: Array<{ mode: string; param?: string }> }
+      const e = event as IrcModeEvent
       if (e.target === nickRef.current && e.modes?.some(m => m.mode === '+o')) setIsOper(true)
       if (e.target?.toLowerCase() === CHANNEL) {
         for (const m of e.modes ?? []) {
@@ -209,11 +214,11 @@ export function useIrcClient(settings: Settings) {
     })
 
     client.on('away', (event: unknown) => {
-      const e = event as { nick: string }
+      const e = event as IrcNickPresenceEvent
       setAwayUsers(prev => new Set([...prev, e.nick]))
     })
     client.on('back', (event: unknown) => {
-      const e = event as { nick: string }
+      const e = event as IrcNickPresenceEvent
       setAwayUsers(prev => { const s = new Set(prev); s.delete(e.nick); return s })
     })
 
@@ -232,7 +237,7 @@ export function useIrcClient(settings: Settings) {
     })
 
     client.on('part', (event: unknown) => {
-      const e = event as { nick: string; channel: string; message?: string }
+      const e = event as IrcPartEvent
       if (e.channel.toLowerCase() !== CHANNEL) return
       setUsers(prev => prev.filter(u => u !== e.nick))
       setAwayUsers(prev => { const s = new Set(prev); s.delete(e.nick); return s })
@@ -242,7 +247,7 @@ export function useIrcClient(settings: Settings) {
     })
 
     client.on('quit', (event: unknown) => {
-      const e = event as { nick: string; message?: string }
+      const e = event as IrcQuitEvent
       setUsers(prev => prev.filter(u => u !== e.nick))
       setAwayUsers(prev => { const s = new Set(prev); s.delete(e.nick); return s })
       handleTypingUser(e.nick, 'done')
@@ -251,7 +256,7 @@ export function useIrcClient(settings: Settings) {
     })
 
     client.on('userlist', (event: unknown) => {
-      const e = event as { channel: string; users: Array<{ nick: string; modes: string[] }> }
+      const e = event as IrcUserlistEvent
       if (e.channel.toLowerCase() !== CHANNEL) return
       setUsers(e.users.map(u => u.nick).filter(n => n.toLowerCase() !== 'chanserv').sort((a, b) => a.localeCompare(b)))
       setOps(e.users.filter(u => u.modes.includes('o')).map(u => u.nick))
@@ -260,7 +265,7 @@ export function useIrcClient(settings: Settings) {
     })
 
     client.on('nick', (event: unknown) => {
-      const e = event as { nick: string; new_nick: string }
+      const e = event as IrcNickEvent
       if (e.nick === nickRef.current) { setNick(e.new_nick); nickRef.current = e.new_nick }
       handleTypingUser(e.nick, 'done')
       handlePmTyping(e.nick, 'done')
@@ -275,7 +280,7 @@ export function useIrcClient(settings: Settings) {
     })
 
     client.on('notice', (event: unknown) => {
-      const e = event as { nick?: string; hostname?: string; message?: string; notice?: string }
+      const e = event as IrcNoticeEvent
       const text = e.message ?? e.notice ?? ''
       if (!text) return
       if (handleBotNotice(e.nick, text)) return
@@ -307,7 +312,7 @@ export function useIrcClient(settings: Settings) {
     })
 
     client.on('tagmsg', (event: unknown) => {
-      const e = event as { nick?: string; target?: string; tags?: Record<string, string> }
+      const e = event as IrcTagmsgEvent
       if (!e.nick || e.nick === nickRef.current) return
       const target = e.target?.toLowerCase()
       if (target === CHANNEL) handleTypingUser(e.nick, e.tags?.['+typing'])
