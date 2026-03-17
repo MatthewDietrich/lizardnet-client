@@ -21,7 +21,7 @@ import { TypingIndicator } from './components/TypingIndicator'
 
 export default function App() {
   const { settings, setSetting } = useSettings()
-  const { nick, connected, connStatus, isOper, isIdentified, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, typingUsers, pmTypingPeers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete, sendTyping, sendEdit, requestFromBot } = useIrcClient(settings)
+  const { nick, connected, connStatus, isOper, isIdentified, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, typingUsers, pmTypingPeers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete, sendMsgDelete, sendTyping, sendEdit, requestFromBot } = useIrcClient(settings)
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'
@@ -93,6 +93,7 @@ export default function App() {
               canRedactUrl={() => isOper || ops.includes(nick)}
               onRedactMedia={url => { redactMediaUrl(url); sendMediaDelete(url) }}
               onEdit={isIdentified ? (msgid, newText) => sendEdit(msgid, newText, activeTab === CHANNEL ? CHANNEL : activeTab) : undefined}
+              onDeleteMsg={activeTab === CHANNEL && (isOper || ops.includes(nick)) ? msgid => sendMsgDelete(msgid) : undefined}
             />
           </ErrorBoundary>
         </div>

@@ -64,5 +64,9 @@ export function useIrcMessages({ nickRef, focusedRef, settingsRef }: Options) {
     setMessages(prev => prev.map(m => m.text.includes(url) ? { ...m, text: replace(m.text) } : m))
   }
 
-  return { messages, unreadCount, setUnreadCount, addMessage, editMessageByMsgid, injectChannelMsgid, redactChannelUrl }
+  function deleteMessageByMsgid(msgid: string) {
+    setMessages(prev => prev.map(m => m.msgid === msgid ? { ...m, text: '[message deleted]', deleted: true } : m))
+  }
+
+  return { messages, unreadCount, setUnreadCount, addMessage, editMessageByMsgid, injectChannelMsgid, redactChannelUrl, deleteMessageByMsgid }
 }

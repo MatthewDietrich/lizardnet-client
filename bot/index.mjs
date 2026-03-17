@@ -232,7 +232,24 @@ client.on('privmsg', async ({ nick, target, message }) => {
     return
   }
 
-  client.notice(nick, `Unknown command. Available: PRESIGN <contentType>, DELETE <url>`)
+  // REDACT <msgid>
+  if (cmd.toUpperCase() === 'REDACT') {
+    const msgid = args[0]
+    if (!msgid) {
+      client.notice(nick, `REDACT_FAIL Missing message ID`)
+      return
+    }
+    if (!channelOps.has(nick)) {
+      client.notice(nick, `REDACT_FAIL Not authorized`)
+      return
+    }
+    client.say(CHANNEL, `MSGDELETE ${msgid}`)
+    client.notice(nick, `REDACT_OK`)
+    console.log(`[bot] Redacted message ${msgid} (requested by ${nick})`)
+    return
+  }
+
+  client.notice(nick, `Unknown command. Available: PRESIGN <contentType>, DELETE <url>, REDACT <msgid>`)
 })
 
 // ─── Start ────────────────────────────────────────────────────────────────────

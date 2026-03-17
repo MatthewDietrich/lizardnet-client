@@ -7,4 +7,5 @@ export interface Message {
   msgid?: string
   edited?: boolean
   originalText?: string
+  deleted?: boolean
 }

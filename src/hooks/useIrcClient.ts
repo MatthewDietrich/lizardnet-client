@@ -44,7 +44,7 @@ export function useIrcClient(settings: Settings) {
   const {
     messages,
     unreadCount, setUnreadCount,
-    addMessage, editMessageByMsgid, injectChannelMsgid, redactChannelUrl,
+    addMessage, editMessageByMsgid, injectChannelMsgid, redactChannelUrl, deleteMessageByMsgid,
   } = useIrcMessages({ nickRef, focusedRef, settingsRef })
 
   const {
@@ -119,6 +119,10 @@ export function useIrcClient(settings: Settings) {
           if (trimmed.startsWith('MEDIADELETE ')) {
             const url = trimmed.slice('MEDIADELETE '.length).trim()
             if (url) redactMediaUrl(url)
+          }
+          if (trimmed.startsWith('MSGDELETE ')) {
+            const msgid = trimmed.slice('MSGDELETE '.length).trim()
+            if (msgid) deleteMessageByMsgid(msgid)
           }
         }
         return
@@ -421,6 +425,7 @@ export function useIrcClient(settings: Settings) {
   function setBack() { clientRef.current?.raw('AWAY') }
   function sendOper(name: string, password: string) { clientRef.current?.raw(`OPER ${sanitize(name)} ${sanitize(password)}`) }
   function sendMediaDelete(url: string) { clientRef.current?.raw(`PRIVMSG #chat :MEDIADELETE ${sanitize(url)}`) }
+  function sendMsgDelete(msgid: string) { clientRef.current?.say(BOT_NICK, `REDACT ${sanitize(msgid)}`) }
   function sendTyping(state: 'active' | 'paused' | 'done', target: string) {
     clientRef.current?.raw(`@+typing=${state} TAGMSG ${target}`)
   }
@@ -436,7 +441,7 @@ export function useIrcClient(settings: Settings) {
     nick, connected, connStatus, isOper, isIdentified, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers,
     typingUsers, pmTypingPeers,
     pmConversations, pmUnread, pmPeerRename,
-    connect, register, disconnect, sendMessage, sendPrivMsg, sendAction, sendOper, sendMediaDelete, sendTyping, sendEdit,
+    connect, register, disconnect, sendMessage, sendPrivMsg, sendAction, sendOper, sendMediaDelete, sendMsgDelete, sendTyping, sendEdit,
     whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ,
     addMessage, addActive, setAway, setBack, redactMediaUrl,
     clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer,

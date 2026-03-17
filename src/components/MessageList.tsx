@@ -11,6 +11,7 @@ interface Props {
   canRedactUrl?: (url: string) => boolean
   onRedactMedia?: (url: string) => void
   onEdit?: (msgid: string, newText: string) => void
+  onDeleteMsg?: (msgid: string) => void
 }
 
 const EMOJI_ONLY_RE = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u200d\ufe0f\u20e3]+$/u
@@ -34,13 +35,14 @@ function highlight(text: string, term: string) {
 
 const gridRow = { display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: '0.4em' }
 
-const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickClick, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl, onEdit }: { m: Message; mentioned: boolean; searchTerm: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void; onDeleteMedia?: (url: string) => void; canDeleteUrl?: (url: string) => boolean; onRedactMedia?: (url: string) => void; canRedactUrl?: (url: string) => boolean; onEdit?: (msgid: string, newText: string) => void }) {
-  const { nick } = useIrcContext()
+const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickClick, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl, onEdit, onDeleteMsg }: { m: Message; mentioned: boolean; searchTerm: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void; onDeleteMedia?: (url: string) => void; canDeleteUrl?: (url: string) => boolean; onRedactMedia?: (url: string) => void; canRedactUrl?: (url: string) => boolean; onEdit?: (msgid: string, newText: string) => void; onDeleteMsg?: (msgid: string) => void }) {
+  const { nick, isOper } = useIrcContext()
   const [hovered, setHovered] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const isMediaOnly = /^https:\/\/lizardnet-media\.s3\.amazonaws\.com\/\S+$/.test(m.text.trim())
-  const canEdit = !!(onEdit && m.msgid && m.from === nick && (!m.kind || m.kind === 'chat') && !isMediaOnly)
+  const canEdit = !!(onEdit && m.msgid && m.from === nick && (!m.kind || m.kind === 'chat') && !isMediaOnly && !m.deleted)
+  const canDeleteMsg = !!(onDeleteMsg && m.msgid && isOper && !m.deleted)
 
   const ts = <span style={{ fontSize: 11, color: 'var(--c-disabled-fg)', whiteSpace: 'nowrap' }}>{m.ts.toLocaleTimeString()}</span>
   const parsed = searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, { onDelete: onDeleteMedia, canDelete: canDeleteUrl, onRedact: onRedactMedia, canRedact: canRedactUrl })
@@ -53,6 +55,9 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
   const editedTag = m.edited ? <span title={`Original: "${m.originalText}"`} style={{ fontSize: 10, color: 'var(--c-tertiary)', marginLeft: '0.3em', cursor: 'help' }}>(edited)</span> : null
   const editBtn = canEdit && hovered && !editing
     ? <button onClick={() => { setDraft(m.text); setEditing(true) }} style={{ background: 'none', border: 'none', padding: '0 0.3em', fontSize: 12, color: 'var(--c-tertiary)', cursor: 'pointer', lineHeight: 1 }} title="Edit message">✎</button>
+    : null
+  const deleteBtn = canDeleteMsg && hovered && !editing
+    ? <button onClick={() => { if (confirm('Delete this message for everyone?')) onDeleteMsg!(m.msgid!) }} style={{ background: 'none', border: 'none', padding: '0 0.3em', fontSize: 12, color: 'var(--c-tertiary)', cursor: 'pointer', lineHeight: 1 }} title="Delete message" aria-label="Delete message">🗑</button>
     : null
 
   function submitEdit() {
@@ -74,6 +79,11 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
     />
   )
 
+  if (m.deleted) return (
+    <div className="fst-italic" style={{ ...gridRow, fontSize: 12, color: 'var(--c-disabled-fg)' }}>
+      {ts}<div>[message deleted]</div>
+    </div>
+  )
   if (m.kind === 'event') return (
     <div className="fst-italic" style={{ ...gridRow, fontSize: 12, color: 'var(--c-tertiary)' }}>
       {ts}<div>{searchTerm ? highlight(m.text, searchTerm) : parseIrc(m.text, { onDelete: onDeleteMedia })}</div>
@@ -116,6 +126,7 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
           }
           {!editing && editedTag}
           {editBtn}
+          {deleteBtn}
         </div>
         {mediaNodes.length > 0 && <div style={{ marginTop: 4 }}>{mediaNodes}</div>}
       </div>
@@ -123,7 +134,7 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
   )
 })
 
-export default function MessageList({ messages, onNickClick, canDeleteUrl, onDeleteMedia, canRedactUrl, onRedactMedia, onEdit }: Props) {
+export default function MessageList({ messages, onNickClick, canDeleteUrl, onDeleteMedia, canRedactUrl, onRedactMedia, onEdit, onDeleteMsg }: Props) {
   const { nick } = useIrcContext()
   const containerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
@@ -265,7 +276,7 @@ export default function MessageList({ messages, onNickClick, canDeleteUrl, onDel
           {filteredMessages.map((m) => {
             const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
               m.from !== nick && !!mentionRegex?.test(m.text)
-            return <MessageRow key={m.id} m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} onDeleteMedia={onDeleteMedia} canDeleteUrl={canDeleteUrl} onRedactMedia={onRedactMedia} canRedactUrl={canRedactUrl} onEdit={onEdit} />
+            return <MessageRow key={m.id} m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} onDeleteMedia={onDeleteMedia} canDeleteUrl={canDeleteUrl} onRedactMedia={onRedactMedia} canRedactUrl={canRedactUrl} onEdit={onEdit} onDeleteMsg={onDeleteMsg} />
           })}
           <div ref={endRef} />
         </div>
