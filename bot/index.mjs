@@ -239,6 +239,11 @@ client.on('privmsg', async ({ nick, target, message }) => {
       client.notice(nick, `REDACT_FAIL Missing message ID`)
       return
     }
+    const identified = await checkIdentified(nick)
+    if (!identified) {
+      client.notice(nick, `REDACT_FAIL Not identified with NickServ`)
+      return
+    }
     if (!channelOps.has(nick)) {
       client.notice(nick, `REDACT_FAIL Not authorized`)
       return
