@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 
 export function CollapseEmbed({ label, children }: { label: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(true)
+  const contentId = useId()
 
   return (
     <div style={{ marginTop: '0.4em' }}>
       <button
         type="button"
         aria-expanded={open}
+        aria-controls={contentId}
         aria-label={`Toggle ${label} embed`}
         onClick={() => setOpen(v => !v)}
         style={{
@@ -18,7 +20,7 @@ export function CollapseEmbed({ label, children }: { label: string; children: Re
         <span aria-hidden="true" style={{ fontSize: 9 }}>{open ? '▼' : '▶'}</span>
         {label}
       </button>
-      {open && <div style={{ marginTop: '0.3em' }}>{children}</div>}
+      {open && <div id={contentId} style={{ marginTop: '0.3em' }}>{children}</div>}
     </div>
   )
 }

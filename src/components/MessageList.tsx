@@ -54,7 +54,7 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
     : <strong>{fromText}</strong>
   const editedTag = m.edited ? <span title={`Original: "${m.originalText}"`} style={{ fontSize: 10, color: 'var(--c-tertiary)', marginLeft: '0.3em', cursor: 'help' }}>(edited)</span> : null
   const editBtn = canEdit && hovered && !editing
-    ? <button onClick={() => { setDraft(m.text); setEditing(true) }} style={{ background: 'none', border: 'none', padding: '0 0.3em', fontSize: 12, color: 'var(--c-tertiary)', cursor: 'pointer', lineHeight: 1 }} title="Edit message">✎</button>
+    ? <button onClick={() => { setDraft(m.text); setEditing(true) }} style={{ background: 'none', border: 'none', padding: '0 0.3em', fontSize: 12, color: 'var(--c-tertiary)', cursor: 'pointer', lineHeight: 1 }} title="Edit message" aria-label="Edit message">✎</button>
     : null
   const deleteBtn = canDeleteMsg && hovered && !editing
     ? <button onClick={() => { if (confirm('Delete this message for everyone?')) onDeleteMsg!(m.msgid!) }} style={{ background: 'none', border: 'none', padding: '0 0.3em', fontSize: 12, color: 'var(--c-tertiary)', cursor: 'pointer', lineHeight: 1 }} title="Delete message" aria-label="Delete message">🗑</button>
@@ -67,6 +67,7 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
 
   const inlineEditor = (
     <input
+      aria-label="Edit message"
       autoFocus
       value={draft}
       onChange={e => setDraft(e.target.value)}

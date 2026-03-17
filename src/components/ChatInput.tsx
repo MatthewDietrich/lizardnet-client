@@ -202,8 +202,11 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ users,
 
   return (
     <div style={{ position: 'relative' }}>
+      <div aria-live="assertive" aria-atomic="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap' }}>
+        {isDragging ? 'Drop zone active — release to upload file' : ''}
+      </div>
       {isDragging && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+        <div aria-hidden="true" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
           <div style={{ fontSize: 20, color: '#fff', fontStyle: 'italic', border: '2px dashed rgba(255,255,255,0.6)', borderRadius: 8, padding: '24px 48px' }}>
             Drop to upload
           </div>
