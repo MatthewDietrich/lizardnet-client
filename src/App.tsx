@@ -3,6 +3,7 @@ import { deleteFromS3, hasUploadedUrl } from './lib/s3Upload'
 import { useIrcClient } from './hooks/useIrcClient'
 import { useSettings } from './hooks/useSettings'
 import { createCommandHandler, HELP_LINES } from './lib/createCommandHandler'
+import { IrcProvider } from './contexts/IrcContext'
 import ChatHeader from './components/ChatHeader'
 import ConnectModal from './components/ConnectModal'
 import AdminConsole from './components/AdminConsole'
@@ -69,40 +70,34 @@ export default function App() {
   const pmPeers = [...pmConversations.keys()]
 
   return (
+    <IrcProvider value={{ nick, connected, connStatus, isOper, isIdentified, ops }}>
     <div className="d-flex flex-column px-4 py-3" style={{ height: '100dvh' }}>
       <ChatHeader
-        nick={nick}
-        connStatus={connStatus}
-        isOper={isOper}
-        ops={ops}
         theme={theme}
         onShowAdmin={() => setShowAdminConsole(true)}
         onShowSettings={() => setShowSettingsConsole(true)}
         onShowNickOrConnect={() => connected ? setShowNickPopup(true) : setShowConnectModal(true)}
       />
 
-      {connected && <TopicBar topic={topic} isOper={isOper} onChangeTopic={changeTopic} />}
+      {connected && <TopicBar topic={topic} onChangeTopic={changeTopic} />}
 
       <div className="d-flex gap-3 flex-grow-1" style={{ minHeight: 0 }}>
         <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
           <ErrorBoundary>
             <MessageList
               messages={activeMessages}
-              nick={nick}
               onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
               canDeleteUrl={url => isIdentified && (hasUploadedUrl(url) || isOper || ops.includes(nick))}
               onDeleteMedia={url => deleteFromS3(url, requestFromBot).then(() => { redactMediaUrl(url) }).catch(err => addActive(`Failed to delete: ${err.message.includes('identified') ? 'Logged in as guest. Please /register or /identify. Type /help for help' : err.message}`))}
               canRedactUrl={() => isOper || ops.includes(nick)}
               onRedactMedia={url => { redactMediaUrl(url); sendMediaDelete(url) }}
-            onEdit={isIdentified ? (msgid, newText) => sendEdit(msgid, newText, activeTab === '#chat' ? '#chat' : activeTab) : undefined}
+              onEdit={isIdentified ? (msgid, newText) => sendEdit(msgid, newText, activeTab === '#chat' ? '#chat' : activeTab) : undefined}
             />
           </ErrorBoundary>
         </div>
         <UserList
           users={users}
-          ops={ops}
           awayUsers={awayUsers}
-          nick={nick}
           onUserClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
         />
       </div>
@@ -117,15 +112,12 @@ export default function App() {
 
       <div className={pmPeers.length > 0 ? 'mt-2' : 'mt-1'}>
         <TypingIndicator users={activeTab === '#chat' ? typingUsers : pmTypingPeers.has(activeTab) ? [activeTab] : []} />
-        <ChatInput ref={chatInputRef} connected={connected} users={users} commands={HELP_LINES.map(l => l.match(/^(\S+)/)?.[1] ?? '')} onSend={handleSend} botRequest={requestFromBot} onTyping={connected ? state => sendTyping(state, activeTab) : undefined} />
+        <ChatInput ref={chatInputRef} users={users} commands={HELP_LINES.map(l => l.match(/^(\S+)/)?.[1] ?? '')} onSend={handleSend} botRequest={requestFromBot} onTyping={connected ? state => sendTyping(state, activeTab) : undefined} />
       </div>
 
       {menuUser && (
         <UserMenu
           nick={menuUser}
-          isOper={isOper}
-          isSelf={menuUser === nick}
-          isTargetOp={ops.includes(menuUser)}
           position={menuPos}
           onWhois={() => whois(menuUser)}
           onMention={() => chatInputRef.current?.mention(menuUser)}
@@ -171,5 +163,6 @@ export default function App() {
         />
       )}
     </div>
+    </IrcProvider>
   )
 }

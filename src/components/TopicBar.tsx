@@ -1,12 +1,13 @@
 import { useState } from 'react'
+import { useIrcContext } from '../contexts/IrcContext'
 
 interface Props {
   topic: string
-  isOper: boolean
   onChangeTopic: (topic: string) => void
 }
 
-export default function TopicBar({ topic, isOper, onChangeTopic }: Props) {
+export default function TopicBar({ topic, onChangeTopic }: Props) {
+  const { isOper } = useIrcContext()
   const [editing, setEditing] = useState(false)
   const [input, setInput] = useState('')
 

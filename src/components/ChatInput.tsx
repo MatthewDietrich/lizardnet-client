@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import EmojiPicker, { type EmojiClickData, Theme } from 'emoji-picker-react'
 import { uploadToS3, type BotRequest } from '../lib/s3Upload'
+import { useIrcContext } from '../contexts/IrcContext'
 
 interface Props {
-  connected: boolean
   users: string[]
   commands: string[]
   onSend: (text: string) => void
@@ -17,7 +17,8 @@ export interface ChatInputHandle {
   focus: () => void
 }
 
-const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connected, users, commands, onSend, botRequest, onTyping }, ref) {
+const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ users, commands, onSend, botRequest, onTyping }, ref) {
+  const { connected } = useIrcContext()
   const [input, setInput] = useState('')
   const [showPicker, setShowPicker] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)

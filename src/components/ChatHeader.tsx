@@ -1,18 +1,15 @@
 import lizardIcon from '../assets/lizard_icon.svg'
-import type { ConnStatus } from '../hooks/useIrcClient'
+import { useIrcContext } from '../contexts/IrcContext'
 
 interface Props {
-  nick: string
-  connStatus: ConnStatus
-  isOper: boolean
-  ops: string[]
   theme: 'dark' | 'light'
   onShowAdmin: () => void
   onShowSettings: () => void
   onShowNickOrConnect: () => void
 }
 
-export default function ChatHeader({ nick, connStatus, isOper, ops, theme, onShowAdmin, onShowSettings, onShowNickOrConnect }: Props) {
+export default function ChatHeader({ theme, onShowAdmin, onShowSettings, onShowNickOrConnect }: Props) {
+  const { nick, connStatus, isOper, ops } = useIrcContext()
   return (
     <div className="d-flex align-items-center gap-3 mb-3">
       <img src={lizardIcon} alt="" style={{ height: 32, filter: theme === 'light' ? 'brightness(0)' : 'none' }} />

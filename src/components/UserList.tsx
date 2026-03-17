@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useIrcContext } from '../contexts/IrcContext'
 
 interface Props {
   users: string[]
-  ops: string[]
   awayUsers: Set<string>
-  nick: string
   onUserClick: (nick: string, pos: { x: number; y: number }) => void
 }
 
@@ -12,7 +11,8 @@ function isSmallViewport() {
   return window.innerWidth < 768
 }
 
-export default function UserList({ users, ops, awayUsers, nick, onUserClick }: Props) {
+export default function UserList({ users, awayUsers, onUserClick }: Props) {
+  const { nick, ops } = useIrcContext()
   const [collapsed, setCollapsed] = useState(isSmallViewport)
 
   useEffect(() => {

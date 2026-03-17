@@ -1,10 +1,10 @@
 import { useRef, useMemo, memo, useLayoutEffect, useState, useEffect, useCallback } from 'react'
 import { parseIrc, isMediaNode } from '../ircFormat'
 import type { Message } from '../types'
+import { useIrcContext } from '../contexts/IrcContext'
 
 interface Props {
   messages: Message[]
-  nick: string
   onNickClick?: (nick: string, pos: { x: number; y: number }) => void
   canDeleteUrl?: (url: string) => boolean
   onDeleteMedia?: (url: string) => void
@@ -34,7 +34,8 @@ function highlight(text: string, term: string) {
 
 const gridRow = { display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: '0.4em' }
 
-const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, nick, onNickClick, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl, onEdit }: { m: Message; mentioned: boolean; searchTerm: string; nick: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void; onDeleteMedia?: (url: string) => void; canDeleteUrl?: (url: string) => boolean; onRedactMedia?: (url: string) => void; canRedactUrl?: (url: string) => boolean; onEdit?: (msgid: string, newText: string) => void }) {
+const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickClick, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl, onEdit }: { m: Message; mentioned: boolean; searchTerm: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void; onDeleteMedia?: (url: string) => void; canDeleteUrl?: (url: string) => boolean; onRedactMedia?: (url: string) => void; canRedactUrl?: (url: string) => boolean; onEdit?: (msgid: string, newText: string) => void }) {
+  const { nick } = useIrcContext()
   const [hovered, setHovered] = useState(false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -122,7 +123,8 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, nick, on
   )
 })
 
-export default function MessageList({ messages, nick, onNickClick, canDeleteUrl, onDeleteMedia, canRedactUrl, onRedactMedia, onEdit }: Props) {
+export default function MessageList({ messages, onNickClick, canDeleteUrl, onDeleteMedia, canRedactUrl, onRedactMedia, onEdit }: Props) {
+  const { nick } = useIrcContext()
   const containerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
@@ -263,7 +265,7 @@ export default function MessageList({ messages, nick, onNickClick, canDeleteUrl,
           {filteredMessages.map((m) => {
             const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
               m.from !== nick && !!mentionRegex?.test(m.text)
-            return <MessageRow key={m.id} m={m} mentioned={mentioned} searchTerm={searchTerm} nick={nick} onNickClick={onNickClick} onDeleteMedia={onDeleteMedia} canDeleteUrl={canDeleteUrl} onRedactMedia={onRedactMedia} canRedactUrl={canRedactUrl} onEdit={onEdit} />
+            return <MessageRow key={m.id} m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} onDeleteMedia={onDeleteMedia} canDeleteUrl={canDeleteUrl} onRedactMedia={onRedactMedia} canRedactUrl={canRedactUrl} onEdit={onEdit} />
           })}
           <div ref={endRef} />
         </div>

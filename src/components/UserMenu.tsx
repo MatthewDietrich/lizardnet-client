@@ -1,10 +1,8 @@
 import { useEffect, useRef } from 'react'
+import { useIrcContext } from '../contexts/IrcContext'
 
 interface Props {
   nick: string
-  isOper: boolean
-  isSelf: boolean
-  isTargetOp: boolean
   position: { x: number; y: number }
   onWhois: () => void
   onMention: () => void
@@ -16,7 +14,10 @@ interface Props {
   onClose: () => void
 }
 
-export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, onWhois, onMention, onWhisper, onKick, onBan, onOp, onDeop, onClose }: Props) {
+export default function UserMenu({ nick, position, onWhois, onMention, onWhisper, onKick, onBan, onOp, onDeop, onClose }: Props) {
+  const { nick: currentNick, isOper, ops } = useIrcContext()
+  const isSelf = nick === currentNick
+  const isTargetOp = ops.includes(nick)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
