@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useId } from 'react'
 import type { Settings } from '../hooks/useSettings'
 import { playNotificationSound } from '../lib/notification'
 import { useFocusTrap } from '../hooks/useFocusTrap'
@@ -138,15 +138,13 @@ export default function SettingsConsole({ onClose, settings, onChangeSetting, th
   )
 }
 
-let toggleId = 0
-
 function Toggle({ label, description, checked, onChange }: {
   label: string
   description?: string
   checked: boolean
   onChange: (v: boolean) => void
 }) {
-  const [id] = useState(() => `toggle-${++toggleId}`)
+  const id = useId()
   return (
     <div className="d-flex align-items-center justify-content-between gap-3">
       <div>

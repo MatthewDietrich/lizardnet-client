@@ -43,7 +43,7 @@ export default function App() {
 
   useEffect(() => {
     setActivePmPeer(activeTab !== '#chat' ? activeTab : null)
-  }, [activeTab])
+  }, [activeTab, setActivePmPeer])
 
   useEffect(() => {
     if (!pmPeerRename) return

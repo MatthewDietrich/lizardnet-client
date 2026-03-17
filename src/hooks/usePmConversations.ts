@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import type { Message } from '../types'
 import type { Settings } from './useSettings'
 import { playNotificationSound } from '../lib/notification'
@@ -31,12 +31,12 @@ export function usePmConversations({ focusedRef, settingsRef, onChannelUnread }:
   const [pmPeerRename, setPmPeerRename] = useState<{ from: string; to: string } | null>(null)
   const activePmPeerRef = useRef<string | null>(null)
 
-  function setActivePmPeer(peer: string | null) {
+  const setActivePmPeer = useCallback((peer: string | null) => {
     activePmPeerRef.current = peer
     if (peer && focusedRef.current) {
       setPmUnread(prev => mapWithout(prev, peer))
     }
-  }
+  }, [])
 
   function editPmMessage(peer: string, msgid: string, newText: string) {
     setPmConversations(prev => {

@@ -6,7 +6,12 @@ import { InlineImage } from './components/InlineImage'
 import { CollapseEmbed } from './components/CollapseEmbed'
 import { InlineVideo } from './components/InlineVideo'
 import { InlineAudio } from './components/InlineAudio'
+import ErrorBoundary from './components/ErrorBoundary'
 import { BUCKET_URL } from './lib/s3Upload'
+
+function embedFallback(url: string) {
+  return <a href={url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--c-tertiary)' }}>[embed unavailable]</a>
+}
 
 function replaceEmojis(text: string): string {
   return text.replace(/:([a-z0-9_+-]+):/g, (match, name) => getEmoji(name) ?? match)
@@ -138,31 +143,37 @@ export function parseIrc(text: string, opts: ParseIrcOptions = {}): ReactNode[] 
       const videoId = getYouTubeId(parts[j])
       if (videoId) {
         nodes.push(mediaWrap(key++,
-          <CollapseEmbed label="YouTube">
-            <iframe
-              width="400" height="225"
-              src={`https://www.youtube-nocookie.com/embed/${videoId}`}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              style={{ border: 'none', display: 'block' }}
-            />
-          </CollapseEmbed>
+          <ErrorBoundary fallback={embedFallback(parts[j])}>
+            <CollapseEmbed label="YouTube">
+              <iframe
+                width="400" height="225"
+                src={`https://www.youtube-nocookie.com/embed/${videoId}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ border: 'none', display: 'block' }}
+              />
+            </CollapseEmbed>
+          </ErrorBoundary>
         ))
       }
       const twitterInfo = getTwitterInfo(parts[j])
       if (twitterInfo) {
         nodes.push(mediaWrap(key++,
-          <CollapseEmbed label="Twitter">
-            <TwitterEmbed {...twitterInfo} />
-          </CollapseEmbed>
+          <ErrorBoundary fallback={embedFallback(parts[j])}>
+            <CollapseEmbed label="Twitter">
+              <TwitterEmbed {...twitterInfo} />
+            </CollapseEmbed>
+          </ErrorBoundary>
         ))
       }
       const bskyUrl = getBlueskyUrl(parts[j])
       if (bskyUrl) {
         nodes.push(mediaWrap(key++,
-          <CollapseEmbed label="Bluesky">
-            <BlueskyEmbed url={bskyUrl} />
-          </CollapseEmbed>
+          <ErrorBoundary fallback={embedFallback(parts[j])}>
+            <CollapseEmbed label="Bluesky">
+              <BlueskyEmbed url={bskyUrl} />
+            </CollapseEmbed>
+          </ErrorBoundary>
         ))
       }
       if (isS3Url(parts[j]) && isAudioUrl(parts[j])) {
