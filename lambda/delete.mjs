@@ -10,9 +10,17 @@ const s3 = new S3Client({
 const BUCKET = 'lizardnet-media'
 const BUCKET_URL = 'https://lizardnet-media.s3.amazonaws.com/'
 
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+const ALLOWED_ORIGINS = new Set([
+  'https://irc.lizard.fun',
+  'http://localhost:5173',
+])
+
+function corsHeaders(event) {
+  const origin = event.headers?.Origin ?? event.headers?.origin ?? ''
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : '',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+  }
 }
 
 export const handler = async (event) => {
@@ -22,7 +30,7 @@ export const handler = async (event) => {
   if (!url || !url.startsWith(BUCKET_URL)) {
     return {
       statusCode: 400,
-      headers: cors,
+      headers: corsHeaders(event),
       body: JSON.stringify({ error: 'Invalid URL' }),
     }
   }
@@ -33,7 +41,7 @@ export const handler = async (event) => {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.\w+$/.test(key)) {
     return {
       statusCode: 400,
-      headers: cors,
+      headers: corsHeaders(event),
       body: JSON.stringify({ error: 'Invalid key' }),
     }
   }
@@ -45,7 +53,7 @@ export const handler = async (event) => {
   if (!valid) {
     return {
       statusCode: 403,
-      headers: cors,
+      headers: corsHeaders(event),
       body: JSON.stringify({ error: 'Not authorized' }),
     }
   }
@@ -54,7 +62,7 @@ export const handler = async (event) => {
 
   return {
     statusCode: 200,
-    headers: cors,
+    headers: corsHeaders(event),
     body: JSON.stringify({ deleted: key }),
   }
 }

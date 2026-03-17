@@ -28,9 +28,17 @@ const ALLOWED_TYPES = {
   'audio/webm':  'weba',
 }
 
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+const ALLOWED_ORIGINS = new Set([
+  'https://irc.lizard.fun',
+  'http://localhost:5173',
+])
+
+function corsHeaders(event) {
+  const origin = event.headers?.Origin ?? event.headers?.origin ?? ''
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : '',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+  }
 }
 
 export const handler = async (event) => {
@@ -41,7 +49,7 @@ export const handler = async (event) => {
   if (!valid) {
     return {
       statusCode: 403,
-      headers: cors,
+      headers: corsHeaders(event),
       body: JSON.stringify({ error: 'Not authorized' }),
     }
   }
@@ -53,7 +61,7 @@ export const handler = async (event) => {
   if (!ext) {
     return {
       statusCode: 400,
-      headers: cors,
+      headers: corsHeaders(event),
       body: JSON.stringify({ error: `Unsupported content type: ${contentType}` }),
     }
   }
@@ -68,7 +76,7 @@ export const handler = async (event) => {
 
   return {
     statusCode: 200,
-    headers: cors,
+    headers: corsHeaders(event),
     body: JSON.stringify({
       uploadUrl: url,
       publicUrl: `https://lizardnet-media.s3.amazonaws.com/${key}`,

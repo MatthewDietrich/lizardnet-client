@@ -14,6 +14,7 @@ const PORT = 7003
 const RATE_LIMIT = { messages: 5, windowMs: 4000 }
 const MAX_MESSAGES = 2000
 const BOT_NICK = 'MediaBot'
+const SERVICES_HOST = 'services.int'
 
 export function useIrcClient(settings: Settings) {
   const settingsRef = useRef(settings)
@@ -364,7 +365,7 @@ if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2]
     })
 
     client.on('notice', (event: unknown) => {
-      const e = event as { nick?: string; message?: string; notice?: string }
+      const e = event as { nick?: string; hostname?: string; message?: string; notice?: string }
       let text = e.message ?? e.notice ?? ''
       if (!text) return
       if (e.nick?.toLowerCase() === BOT_NICK.toLowerCase()) {
@@ -385,7 +386,7 @@ if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2]
         }
         return
       }
-      if (e.nick?.toLowerCase() === 'nickserv') {
+      if (e.nick?.toLowerCase() === 'nickserv' && e.hostname === SERVICES_HOST) {
         if (/^Last login from:/i.test(text)) return
         if (/^Welcome to /i.test(text)) return
         text = text.replace(/\/msg NickServ IDENTIFY(?:\s+\S+)?\s+(\S+)/gi, '/identify $1')
