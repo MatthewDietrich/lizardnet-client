@@ -6,6 +6,7 @@ import { createCommandHandler, HELP_LINES } from './lib/createCommandHandler'
 import { CHANNEL } from './lib/constants'
 import { IrcProvider } from './contexts/IrcContext'
 import ChatHeader from './components/ChatHeader'
+import type { MessageActions } from './components/MessageList'
 import ConnectModal from './components/ConnectModal'
 import AdminConsole from './components/AdminConsole'
 import SettingsConsole from './components/SettingsConsole'
@@ -74,6 +75,14 @@ export default function App() {
 
   const activeMessages = activeTab === CHANNEL ? messages : (pmConversations.get(activeTab) ?? [])
   const pmPeers = [...pmConversations.keys()]
+  const messageActions: MessageActions = {
+    canDeleteUrl: url => isIdentified && (hasUploadedUrl(url) || isOper || ops.includes(nick)),
+    onDeleteMedia: url => deleteFromS3(url, requestFromBot).then(() => { redactMediaUrl(url) }).catch(err => addActive(`Failed to delete: ${err.message.includes('identified') ? 'Logged in as guest. Please /register or /identify. Type /help for help' : err.message}`)),
+    canRedactUrl: () => isOper || ops.includes(nick),
+    onRedactMedia: url => { redactMediaUrl(url); sendMediaDelete(url) },
+    onEdit: isIdentified ? (msgid, newText) => sendEdit(msgid, newText, activeTab === CHANNEL ? CHANNEL : activeTab) : undefined,
+    onDeleteMsg: activeTab === CHANNEL && (isOper || ops.includes(nick)) ? msgid => sendMsgDelete(msgid) : undefined,
+  }
 
   return (
     <IrcProvider value={{ nick, connected, connStatus, isOper, isIdentified, ops }}>
@@ -93,12 +102,7 @@ export default function App() {
             <MessageList
               messages={activeMessages}
               onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
-              canDeleteUrl={url => isIdentified && (hasUploadedUrl(url) || isOper || ops.includes(nick))}
-              onDeleteMedia={url => deleteFromS3(url, requestFromBot).then(() => { redactMediaUrl(url) }).catch(err => addActive(`Failed to delete: ${err.message.includes('identified') ? 'Logged in as guest. Please /register or /identify. Type /help for help' : err.message}`))}
-              canRedactUrl={() => isOper || ops.includes(nick)}
-              onRedactMedia={url => { redactMediaUrl(url); sendMediaDelete(url) }}
-              onEdit={isIdentified ? (msgid, newText) => sendEdit(msgid, newText, activeTab === CHANNEL ? CHANNEL : activeTab) : undefined}
-              onDeleteMsg={activeTab === CHANNEL && (isOper || ops.includes(nick)) ? msgid => sendMsgDelete(msgid) : undefined}
+              actions={messageActions}
             />
           </ErrorBoundary>
         </div>

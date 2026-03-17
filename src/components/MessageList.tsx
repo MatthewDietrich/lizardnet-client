@@ -3,15 +3,19 @@ import { parseIrc, isMediaNode } from '../ircFormat'
 import type { Message } from '../types'
 import { useIrcContext } from '../contexts/IrcContext'
 
-interface Props {
-  messages: Message[]
-  onNickClick?: (nick: string, pos: { x: number; y: number }) => void
+export interface MessageActions {
   canDeleteUrl?: (url: string) => boolean
   onDeleteMedia?: (url: string) => void
   canRedactUrl?: (url: string) => boolean
   onRedactMedia?: (url: string) => void
   onEdit?: (msgid: string, newText: string) => void
   onDeleteMsg?: (msgid: string) => void
+}
+
+interface Props {
+  messages: Message[]
+  onNickClick?: (nick: string, pos: { x: number; y: number }) => void
+  actions?: MessageActions
 }
 
 const EMOJI_ONLY_RE = /^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u200d\ufe0f\u20e3]+$/u
@@ -35,7 +39,8 @@ function highlight(text: string, term: string) {
 
 const gridRow = { display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: '0.4em' }
 
-const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickClick, onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl, onEdit, onDeleteMsg }: { m: Message; mentioned: boolean; searchTerm: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void; onDeleteMedia?: (url: string) => void; canDeleteUrl?: (url: string) => boolean; onRedactMedia?: (url: string) => void; canRedactUrl?: (url: string) => boolean; onEdit?: (msgid: string, newText: string) => void; onDeleteMsg?: (msgid: string) => void }) {
+const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickClick, actions }: { m: Message; mentioned: boolean; searchTerm: string; onNickClick?: (nick: string, pos: { x: number; y: number }) => void; actions?: MessageActions }) {
+  const { onDeleteMedia, canDeleteUrl, onRedactMedia, canRedactUrl, onEdit, onDeleteMsg } = actions ?? {}
   const { nick, isOper } = useIrcContext()
   const [hovered, setHovered] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -135,7 +140,7 @@ const MessageRow = memo(function MessageRow({ m, mentioned, searchTerm, onNickCl
   )
 })
 
-export default function MessageList({ messages, onNickClick, canDeleteUrl, onDeleteMedia, canRedactUrl, onRedactMedia, onEdit, onDeleteMsg }: Props) {
+export default function MessageList({ messages, onNickClick, actions }: Props) {
   const { nick } = useIrcContext()
   const containerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
@@ -277,7 +282,7 @@ export default function MessageList({ messages, onNickClick, canDeleteUrl, onDel
           {filteredMessages.map((m) => {
             const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
               m.from !== nick && !!mentionRegex?.test(m.text)
-            return <MessageRow key={m.id} m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} onDeleteMedia={onDeleteMedia} canDeleteUrl={canDeleteUrl} onRedactMedia={onRedactMedia} canRedactUrl={canRedactUrl} onEdit={onEdit} onDeleteMsg={onDeleteMsg} />
+            return <MessageRow key={m.id} m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} actions={actions} />
           })}
           <div ref={endRef} />
         </div>
