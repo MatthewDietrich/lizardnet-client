@@ -1,3 +1,5 @@
+import { CHANNEL } from '../lib/constants'
+
 interface Props {
   activeTab: string
   pmPeers: string[]
@@ -11,9 +13,9 @@ export default function PmTabs({ activeTab, pmPeers, pmUnread, onSwitch, onClose
   return (
     <div className="d-flex gap-1 mt-2" style={{ flexShrink: 0 }}>
       <button
-        className={`btn btn-sm ${activeTab === '#chat' ? 'btn-secondary' : 'btn-outline-secondary'}`}
+        className={`btn btn-sm ${activeTab === CHANNEL ? 'btn-secondary' : 'btn-outline-secondary'}`}
         style={{ fontSize: 12, padding: '2px 10px' }}
-        onClick={() => onSwitch('#chat')}
+        onClick={() => onSwitch(CHANNEL)}
       >
         #chat
       </button>

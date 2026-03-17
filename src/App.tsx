@@ -3,6 +3,7 @@ import { deleteFromS3, hasUploadedUrl } from './lib/s3Upload'
 import { useIrcClient } from './hooks/useIrcClient'
 import { useSettings } from './hooks/useSettings'
 import { createCommandHandler, HELP_LINES } from './lib/createCommandHandler'
+import { CHANNEL } from './lib/constants'
 import { IrcProvider } from './contexts/IrcContext'
 import ChatHeader from './components/ChatHeader'
 import ConnectModal from './components/ConnectModal'
@@ -32,7 +33,7 @@ export default function App() {
   const [showAdminConsole, setShowAdminConsole] = useState(false)
   const [showSettingsConsole, setShowSettingsConsole] = useState(false)
   const [showNickPopup, setShowNickPopup] = useState(false)
-  const [activeTab, setActiveTab] = useState('#chat')
+  const [activeTab, setActiveTab] = useState(CHANNEL)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme') as 'dark' | 'light') ?? 'dark')
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export default function App() {
   const chatInputRef = useRef<ChatInputHandle>(null)
 
   useEffect(() => {
-    setActivePmPeer(activeTab !== '#chat' ? activeTab : null)
+    setActivePmPeer(activeTab !== CHANNEL ? activeTab : null)
   }, [activeTab, setActivePmPeer])
 
   useEffect(() => {
@@ -52,13 +53,13 @@ export default function App() {
 
   function switchTab(tab: string) {
     setActiveTab(tab)
-    if (tab !== '#chat') clearPmUnread(tab)
+    if (tab !== CHANNEL) clearPmUnread(tab)
     requestAnimationFrame(() => chatInputRef.current?.focus())
   }
 
   function closeTab(peer: string) {
     closePmConversation(peer)
-    if (activeTab === peer) setActiveTab('#chat')
+    if (activeTab === peer) setActiveTab(CHANNEL)
   }
 
   const handleSend = createCommandHandler({
@@ -66,7 +67,7 @@ export default function App() {
     openPmConversation, switchTab, sayNickServ, sendOper, setAway, setBack, addActive,
   })
 
-  const activeMessages = activeTab === '#chat' ? messages : (pmConversations.get(activeTab) ?? [])
+  const activeMessages = activeTab === CHANNEL ? messages : (pmConversations.get(activeTab) ?? [])
   const pmPeers = [...pmConversations.keys()]
 
   return (
@@ -91,7 +92,7 @@ export default function App() {
               onDeleteMedia={url => deleteFromS3(url, requestFromBot).then(() => { redactMediaUrl(url) }).catch(err => addActive(`Failed to delete: ${err.message.includes('identified') ? 'Logged in as guest. Please /register or /identify. Type /help for help' : err.message}`))}
               canRedactUrl={() => isOper || ops.includes(nick)}
               onRedactMedia={url => { redactMediaUrl(url); sendMediaDelete(url) }}
-              onEdit={isIdentified ? (msgid, newText) => sendEdit(msgid, newText, activeTab === '#chat' ? '#chat' : activeTab) : undefined}
+              onEdit={isIdentified ? (msgid, newText) => sendEdit(msgid, newText, activeTab === CHANNEL ? CHANNEL : activeTab) : undefined}
             />
           </ErrorBoundary>
         </div>
@@ -111,7 +112,7 @@ export default function App() {
       />
 
       <div className={pmPeers.length > 0 ? 'mt-2' : 'mt-1'}>
-        <TypingIndicator users={activeTab === '#chat' ? typingUsers : pmTypingPeers.has(activeTab) ? [activeTab] : []} />
+        <TypingIndicator users={activeTab === CHANNEL ? typingUsers : pmTypingPeers.has(activeTab) ? [activeTab] : []} />
         <ChatInput ref={chatInputRef} users={users} commands={HELP_LINES.map(l => l.match(/^(\S+)/)?.[1] ?? '')} onSend={handleSend} botRequest={requestFromBot} onTyping={connected ? state => sendTyping(state, activeTab) : undefined} />
       </div>
 

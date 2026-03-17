@@ -3,6 +3,7 @@ import IRC from 'irc-framework'
 import type { Settings } from './useSettings'
 import { encryptCreds, decryptCreds } from '../lib/credentials'
 import { useReconnect } from './useReconnect'
+import { CHANNEL } from '../lib/constants'
 import { usePmConversations } from './usePmConversations'
 import { useIrcMessages } from './useIrcMessages'
 import { useIrcUsers } from './useIrcUsers'
@@ -108,7 +109,7 @@ export function useIrcClient(settings: Settings) {
       const { nick: who, target, message, type, tags } = event as { nick: string; target: string; message: string; type: string; tags?: Record<string, string> }
       if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
       if (who.toLowerCase() === BOT_NICK.toLowerCase()) {
-        if (target?.toLowerCase() === '#chat') {
+        if (target?.toLowerCase() === CHANNEL) {
           const trimmed = message.trim()
           if (trimmed.startsWith('MEDIADELETE ')) {
             const url = trimmed.slice('MEDIADELETE '.length).trim()
@@ -123,7 +124,7 @@ export function useIrcClient(settings: Settings) {
       const isEcho = 'inspircd.org/echo' in (tags ?? {})
       const msgid = tags?.['msgid']
       const editOf = tags?.['+draft/edit']
-      if (target?.toLowerCase() === '#chat') {
+      if (target?.toLowerCase() === CHANNEL) {
         if (editOf) editMessageByMsgid(editOf, message)
         else if (isEcho) { if (msgid) injectChannelMsgid(message, msgid) }
         else addMessage(who, message, isAction ? 'action' : 'chat', serverTime, isHistory, msgid)
@@ -145,7 +146,7 @@ export function useIrcClient(settings: Settings) {
 
     client.on('topic', (event: unknown) => {
       const e = event as { channel: string; topic: string; nick?: string }
-      if (e.channel?.toLowerCase() !== '#chat') return
+      if (e.channel?.toLowerCase() !== CHANNEL) return
       setTopicState(e.topic ?? '')
       if (e.nick) addMessage('*', `Topic changed to: ${e.topic}`, 'event')
     })
@@ -160,7 +161,7 @@ export function useIrcClient(settings: Settings) {
 
     client.on('banlist', (event: unknown) => {
       const e = event as { channel: string; bans: Array<{ ban: string }> }
-      if (e.channel?.toLowerCase() !== '#chat') return
+      if (e.channel?.toLowerCase() !== CHANNEL) return
       for (const b of e.bans ?? []) {
         if (b.ban) setBannedUsers(prev => prev.includes(b.ban) ? prev : [...prev, b.ban])
       }
@@ -182,7 +183,7 @@ export function useIrcClient(settings: Settings) {
     client.on('mode', (event: unknown) => {
       const e = event as { target?: string; modes?: Array<{ mode: string; param?: string }> }
       if (e.target === nickRef.current && e.modes?.some(m => m.mode === '+o')) setIsOper(true)
-      if (e.target?.toLowerCase() === '#chat') {
+      if (e.target?.toLowerCase() === CHANNEL) {
         for (const m of e.modes ?? []) {
           if (m.mode === '+o' && m.param) {
             setOps(prev => prev.includes(m.param!) ? prev : [...prev, m.param!])
@@ -218,21 +219,21 @@ export function useIrcClient(settings: Settings) {
 
     client.on('join', ({ nick: who, channel }) => {
       if (who === nickRef.current) return
-      if (channel.toLowerCase() !== '#chat') return
+      if (channel.toLowerCase() !== CHANNEL) return
       if (who.toLowerCase() === 'chanserv') return
       setUsers(prev => prev.includes(who) ? prev : [...prev, who].sort((a, b) => a.localeCompare(b)))
       addMessage('*', `${who} has joined`, 'event')
     })
 
     client.on('kick', ({ kicked, nick: by, channel }) => {
-      if (channel.toLowerCase() !== '#chat') return
+      if (channel.toLowerCase() !== CHANNEL) return
       setUsers(prev => prev.filter(u => u !== kicked))
       addMessage('*', `${kicked} was kicked by ${by}`, 'event')
     })
 
     client.on('part', (event: unknown) => {
       const e = event as { nick: string; channel: string; message?: string }
-      if (e.channel.toLowerCase() !== '#chat') return
+      if (e.channel.toLowerCase() !== CHANNEL) return
       setUsers(prev => prev.filter(u => u !== e.nick))
       setAwayUsers(prev => { const s = new Set(prev); s.delete(e.nick); return s })
       handleTypingUser(e.nick, 'done')
@@ -251,7 +252,7 @@ export function useIrcClient(settings: Settings) {
 
     client.on('userlist', (event: unknown) => {
       const e = event as { channel: string; users: Array<{ nick: string; modes: string[] }> }
-      if (e.channel.toLowerCase() !== '#chat') return
+      if (e.channel.toLowerCase() !== CHANNEL) return
       setUsers(e.users.map(u => u.nick).filter(n => n.toLowerCase() !== 'chanserv').sort((a, b) => a.localeCompare(b)))
       setOps(e.users.filter(u => u.modes.includes('o')).map(u => u.nick))
       const self = e.users.find(u => u.nick === nickRef.current)
@@ -309,7 +310,7 @@ export function useIrcClient(settings: Settings) {
       const e = event as { nick?: string; target?: string; tags?: Record<string, string> }
       if (!e.nick || e.nick === nickRef.current) return
       const target = e.target?.toLowerCase()
-      if (target === '#chat') handleTypingUser(e.nick, e.tags?.['+typing'])
+      if (target === CHANNEL) handleTypingUser(e.nick, e.tags?.['+typing'])
       else if (target === nickRef.current.toLowerCase()) handlePmTyping(e.nick, e.tags?.['+typing'])
     })
 
@@ -334,7 +335,7 @@ export function useIrcClient(settings: Settings) {
       }
       const cmd = nickServCommand ?? (password ? `IDENTIFY ${password}` : null)
       if (cmd) client.say('NickServ', cmd)
-      client.join('#chat')
+      client.join(CHANNEL)
     })
     attachListeners(client)
     clientRef.current = client
@@ -389,7 +390,7 @@ export function useIrcClient(settings: Settings) {
   function sendMessage(text: string) {
     if (!text.trim() || !clientRef.current) return
     if (!checkRateLimit()) return
-    clientRef.current.say('#chat', text)
+    clientRef.current.say(CHANNEL, text)
     addMessage(nickRef.current, text)
   }
 
@@ -400,10 +401,10 @@ export function useIrcClient(settings: Settings) {
     addPmMessage(target, nickRef.current, text, false)
   }
 
-  function sendAction(text: string, target = '#chat') {
+  function sendAction(text: string, target = CHANNEL) {
     if (!text.trim() || !clientRef.current) return
     clientRef.current.say(target, `\x01ACTION ${text}\x01`)
-    if (target === '#chat') addMessage(nickRef.current, text, 'action')
+    if (target === CHANNEL) addMessage(nickRef.current, text, 'action')
     else addPmMessage(target, nickRef.current, text, false, 'action')
   }
 
@@ -422,7 +423,7 @@ export function useIrcClient(settings: Settings) {
   function sendEdit(msgid: string, newText: string, target: string) {
     if (!clientRef.current) return
     clientRef.current.raw(`@+draft/edit=${msgid} PRIVMSG ${target} :${sanitize(newText)}`)
-    if (target.toLowerCase() === '#chat') editMessageByMsgid(msgid, newText)
+    if (target.toLowerCase() === CHANNEL) editMessageByMsgid(msgid, newText)
     else editPmMessage(target, msgid, newText)
   }
 

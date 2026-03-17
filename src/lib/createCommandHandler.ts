@@ -1,3 +1,5 @@
+import { CHANNEL } from './constants'
+
 export const HELP_LINES = [
   '/say <message>               — send message literally (useful for text starting with /)',
   '/me <action>                 — send an action message',
@@ -39,11 +41,11 @@ export function createCommandHandler({
   function handleSend(text: string) {
     if (text.startsWith('/say ')) {
       const msg = text.slice(5)
-      if (msg) { activeTab === '#chat' ? sendMessage(msg) : sendPrivMsg(activeTab, msg); return }
+      if (msg) { activeTab === CHANNEL ? sendMessage(msg) : sendPrivMsg(activeTab, msg); return }
     }
     if (text.startsWith('/me ')) {
       const action = text.slice(4).trim()
-      if (action) { sendAction(action, activeTab !== '#chat' ? activeTab : '#chat'); return }
+      if (action) { sendAction(action, activeTab !== CHANNEL ? activeTab : CHANNEL); return }
     }
     if (text.startsWith('/nick ')) {
       const newNick = text.slice(6).trim()
@@ -85,7 +87,7 @@ export function createCommandHandler({
     if (text.trim() === '/rules') { for (const line of RULES_LINES) addActive(line); return }
     if (text.trim() === '/help') { for (const line of HELP_LINES) addActive(line); return }
     if (text.startsWith('/')) { addActive('Invalid command. Type /help for a list of commands.'); return }
-    if (activeTab !== '#chat') { sendPrivMsg(activeTab, text); return }
+    if (activeTab !== CHANNEL) { sendPrivMsg(activeTab, text); return }
     sendMessage(text)
   }
 

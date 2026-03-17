@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createCommandHandler, HELP_LINES, RULES_LINES } from './createCommandHandler'
+import { CHANNEL } from './constants'
 
-function makeOptions(activeTab = '#chat') {
+function makeOptions(activeTab = CHANNEL) {
   return {
     activeTab,
     sendMessage: vi.fn(),
@@ -51,7 +52,7 @@ describe('createCommandHandler', () => {
     it('sends an action in #chat', () => {
       const opts = makeOptions()
       createCommandHandler(opts)('/me waves')
-      expect(opts.sendAction).toHaveBeenCalledWith('waves', '#chat')
+      expect(opts.sendAction).toHaveBeenCalledWith('waves', CHANNEL)
     })
 
     it('sends an action targeted at the PM peer', () => {
