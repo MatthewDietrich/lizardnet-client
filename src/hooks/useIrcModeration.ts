@@ -12,15 +12,15 @@ export function useIrcModeration({ clientRef }: Options) {
 
   function sanitize(s: string) { return s.replace(/[\r\n]/g, '') }
 
-  // Called with parsed params from a raw 311 (WHOIS) reply.
-  // Completes a pending ban initiated by ban(). Returns true if it handled the event.
-  function handleWhoisForBan(p: string[]): boolean {
-    if (!p[1] || !pendingBansRef.current.has(p[1])) return false
-    const mask = `*!${p[2]}@${p[3]}`
-    pendingBansRef.current.delete(p[1])
-    maskToNickRef.current.set(mask, p[1])
+  // Called from the whois event handler when a pending ban is in flight.
+  // Returns true if the ban was handled (caller should suppress the normal whois display).
+  function handleWhoisForBan(e: { nick: string; ident?: string; hostname?: string }): boolean {
+    if (!e.nick || !pendingBansRef.current.has(e.nick)) return false
+    const mask = `*!${e.ident ?? '*'}@${e.hostname ?? '*'}`
+    pendingBansRef.current.delete(e.nick)
+    maskToNickRef.current.set(mask, e.nick)
     clientRef.current?.raw(`MODE #chat +b ${mask}`)
-    clientRef.current?.raw(`KICK #chat ${p[1]}`)
+    clientRef.current?.raw(`KICK #chat ${e.nick}`)
     return true
   }
 

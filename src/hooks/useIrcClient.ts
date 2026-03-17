@@ -8,6 +8,7 @@ import { useIrcMessages } from './useIrcMessages'
 import { useIrcUsers } from './useIrcUsers'
 import { useBotProtocol } from './useBotProtocol'
 import { useIrcModeration } from './useIrcModeration'
+import { parseRawLine } from '../lib/parseRawLine'
 
 export type { ConnStatus } from './useReconnect'
 
@@ -29,7 +30,6 @@ export function useIrcClient(settings: Settings) {
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
   const credentialsRef = useRef<Awaited<ReturnType<typeof encryptCreds>> | null>(null)
   const sendTimestampsRef = useRef<number[]>([])
-  const activeBatchesRef = useRef<Map<string, string>>(new Map())
 
   function sanitize(s: string) { return s.replace(/[\r\n]/g, '') }
 
@@ -138,54 +138,40 @@ export function useIrcClient(settings: Settings) {
     client.on('raw', (event: unknown) => {
       const e = event as { line?: string; from_server?: boolean }
       if (!e.from_server || !e.line) return
-      let rest = e.line
-      if (rest.startsWith('@')) rest = rest.slice(rest.indexOf(' ') + 1)
-      if (rest.startsWith(':')) rest = rest.slice(rest.indexOf(' ') + 1)
-      const spaceIdx = rest.indexOf(' ')
-      const cmd = spaceIdx === -1 ? rest : rest.slice(0, spaceIdx)
-      const paramStr = spaceIdx === -1 ? '' : rest.slice(spaceIdx + 1)
-      const parts = paramStr.split(' ')
-      const p: string[] = []
-      for (let i = 0; i < parts.length; i++) {
-        if (parts[i].startsWith(':')) { p.push(parts.slice(i).join(' ').slice(1)); break }
-        if (parts[i]) p.push(parts[i])
-      }
-
-      if (cmd === '332' && p[1]?.toLowerCase() === '#chat' && p[2]) setTopicState(p[2])
-      if (cmd === 'TOPIC' && p[0]?.toLowerCase() === '#chat' && p[1] !== undefined) {
-        setTopicState(p[1])
-        addMessage('*', `Topic changed to: ${p[1]}`, 'event')
-      }
-      if (cmd === '305') {
-        addActive('You are no longer marked as away.')
-        setAwayUsers(prev => { const s = new Set(prev); s.delete(nickRef.current); return s })
-      }
-      if (cmd === '306') {
-        addActive('You have been marked as away.')
-        setAwayUsers(prev => new Set([...prev, nickRef.current]))
-      }
-      if (cmd === '900') setIsIdentified(true)
+      const { cmd } = parseRawLine(e.line)
       if (cmd === '381') { setIsOper(true); client.raw('MODE #chat +b'); addActive('You are now a server operator.') }
-      if (cmd === '464') addActive('OPER failed: incorrect password.')
       if (cmd === '491') addActive('OPER failed: no O-lines for your host.')
-      if (cmd === '311') handleWhoisForBan(p)
-      if (cmd === '474' || cmd === '465') addActive('You have been banned.')
-      if (cmd === '367' && p[1]?.toLowerCase() === '#chat' && p[2]) {
-        setBannedUsers(prev => prev.includes(p[2]) ? prev : [...prev, p[2]])
-      }
-      if (cmd === 'BATCH') {
-        const ref = p[0]
-        if (ref?.startsWith('+')) {
-          activeBatchesRef.current.set(ref.slice(1), p[1] ?? '')
-        } else if (ref?.startsWith('-')) {
-          const type = activeBatchesRef.current.get(ref.slice(1))
-          activeBatchesRef.current.delete(ref.slice(1))
-          if (type === 'chathistory') addMessage('*', '─── history above ───', 'event')
-        }
+    })
+
+    client.on('topic', (event: unknown) => {
+      const e = event as { channel: string; topic: string; nick?: string }
+      if (e.channel?.toLowerCase() !== '#chat') return
+      setTopicState(e.topic ?? '')
+      if (e.nick) addMessage('*', `Topic changed to: ${e.topic}`, 'event')
+    })
+
+    client.on('loggedin', () => { setIsIdentified(true) })
+
+    client.on('irc error', (event: unknown) => {
+      const e = event as { command?: string }
+      if (e.command === '464') addActive('OPER failed: incorrect password.')
+      if (e.command === '474' || e.command === '465') addActive('You have been banned.')
+    })
+
+    client.on('banlist', (event: unknown) => {
+      const e = event as { channel: string; bans: Array<{ ban: string }> }
+      if (e.channel?.toLowerCase() !== '#chat') return
+      for (const b of e.bans ?? []) {
+        if (b.ban) setBannedUsers(prev => prev.includes(b.ban) ? prev : [...prev, b.ban])
       }
     })
 
+    client.on('batch end chathistory', () => {
+      addMessage('*', '─── history above ───', 'event')
+    })
+
     client.on('whois', (e) => {
+      if (handleWhoisForBan(e)) return
       if (silentWhoisRef.current.has(e.nick)) { silentWhoisRef.current.delete(e.nick); return }
       const lines: string[] = []
       if (e.idle !== undefined) lines.push(`${e.nick} has been idle ${e.idle}s`)
