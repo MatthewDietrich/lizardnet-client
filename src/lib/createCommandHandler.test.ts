@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { createCommandHandler, HELP_LINES, RULES_LINES } from './createCommandHandler'
 
 function makeOptions(activeTab = '#chat') {

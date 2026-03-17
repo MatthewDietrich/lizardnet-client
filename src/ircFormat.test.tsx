@@ -44,27 +44,27 @@ describe('parseIrc', () => {
   describe('IRC formatting codes', () => {
     it('applies bold (\x02)', () => {
       const nodes = parseIrc('\x02bold\x02 normal')
-      const styles = (nodes as ReactElement[]).map(n => n.props?.style).filter(Boolean)
+      const styles = (nodes as ReactElement<{ style?: React.CSSProperties }>[]).map(n => n.props?.style).filter(Boolean)
       expect(styles.some((s: React.CSSProperties) => s.fontWeight === 'bold')).toBe(true)
     })
 
     it('applies italic (\x1d)', () => {
       const nodes = parseIrc('\x1ditalic\x1d normal')
-      const styles = (nodes as ReactElement[]).map(n => n.props?.style).filter(Boolean)
+      const styles = (nodes as ReactElement<{ style?: React.CSSProperties }>[]).map(n => n.props?.style).filter(Boolean)
       expect(styles.some((s: React.CSSProperties) => s.fontStyle === 'italic')).toBe(true)
     })
 
     it('applies a foreground color (\x030)', () => {
       // Color 4 = #ff0000
       const nodes = parseIrc('\x034red text\x03')
-      const styles = (nodes as ReactElement[]).map(n => n.props?.style).filter(Boolean)
+      const styles = (nodes as ReactElement<{ style?: React.CSSProperties }>[]).map(n => n.props?.style).filter(Boolean)
       expect(styles.some((s: React.CSSProperties) => s.color === '#ff0000')).toBe(true)
     })
 
     it('resets formatting with \x0f', () => {
       const nodes = parseIrc('\x02bold\x0f normal')
       // The span after the reset should not be bold
-      const afterReset = (nodes as ReactElement[]).find(n =>
+      const afterReset = (nodes as ReactElement<{ style?: React.CSSProperties }>[]).find(n =>
         extractText(n).includes('normal')
       )
       expect(afterReset?.props?.style?.fontWeight).toBeUndefined()
