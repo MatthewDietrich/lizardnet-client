@@ -7,4 +7,8 @@ export default defineConfig({
     'process.env': {},
     global: 'globalThis',
   },
+  test: {
+    globals: true,
+    environment: 'node',
+  },
 })
