@@ -26,6 +26,10 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ users,
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  const connectedRef = useRef(connected)
+  connectedRef.current = connected
+  const uploadProgressRef = useRef(uploadProgress)
+  uploadProgressRef.current = uploadProgress
   const [isDragging, setIsDragging] = useState(false)
   const dragCounterRef = useRef(0)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -125,7 +129,7 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ users,
       e.preventDefault()
       dragCounterRef.current = 0
       setIsDragging(false)
-      if (!connected || uploadProgress !== null) return
+      if (!connectedRef.current || uploadProgressRef.current !== null) return
       const file = e.dataTransfer?.files[0]
       if (file) handleFile(file)
     }
@@ -139,7 +143,7 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ users,
       document.removeEventListener('dragover', onDragOver)
       document.removeEventListener('drop', onDrop)
     }
-  }, [connected, uploadProgress])
+  }, [])
 
   function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault()

@@ -1,10 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 
 export function useIrcUsers() {
   const [users, setUsers] = useState<string[]>([])
   const [ops, setOps] = useState<string[]>([])
-  const opsRef = useRef<string[]>([])
-  useEffect(() => { opsRef.current = ops }, [ops])
   const [bannedUsers, setBannedUsers] = useState<string[]>([])
   const [awayUsers, setAwayUsers] = useState<Set<string>>(new Set())
   const [isOper, setIsOper] = useState(false)
