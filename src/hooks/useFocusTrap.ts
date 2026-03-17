@@ -5,12 +5,14 @@ const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:n
 export function useFocusTrap<T extends HTMLElement>(onClose?: () => void) {
   const ref = useRef<T>(null)
   const previousFocus = useRef<Element | null>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     previousFocus.current = document.activeElement
 
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') { onClose?.(); return }
+      if (e.key === 'Escape') { onCloseRef.current?.(); return }
       if (e.key !== 'Tab') return
       const el = ref.current
       if (!el) return
@@ -32,7 +34,7 @@ export function useFocusTrap<T extends HTMLElement>(onClose?: () => void) {
       document.removeEventListener('keydown', handleKeyDown)
       if (previousFocus.current instanceof HTMLElement) previousFocus.current.focus()
     }
-  }, [onClose])
+  }, [])
 
   return ref
 }

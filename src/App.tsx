@@ -21,7 +21,12 @@ import { TypingIndicator } from './components/TypingIndicator'
 
 export default function App() {
   const { settings, setSetting } = useSettings()
-  const { nick, connected, connStatus, isOper, isIdentified, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers, typingUsers, pmTypingPeers, pmConversations, pmUnread, pmPeerRename, connect, register, sendMessage, sendPrivMsg, whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ, addActive, sendAction, setAway, setBack, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer, sendOper, redactMediaUrl, sendMediaDelete, sendMsgDelete, sendTyping, sendEdit, requestFromBot } = useIrcClient(settings)
+  const irc = useIrcClient(settings)
+  const { nick, connected, connStatus, isIdentified, connect, register, changeNick, sayNickServ, setAway, setBack, sendOper, whois } = irc.connection
+  const { messages, unreadCount, topic, typingUsers, sendMessage, sendAction, sendEdit, addActive, changeTopic, sendTyping } = irc.channel
+  const { pmConversations, pmUnread, pmPeerRename, pmTypingPeers, sendPrivMsg, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer } = irc.pm
+  const { users, ops, bannedUsers, awayUsers, isOper, kick, ban, unban, op, deop } = irc.users
+  const { redactMediaUrl, sendMediaDelete, sendMsgDelete, requestFromBot } = irc.media
 
   useEffect(() => {
     document.title = unreadCount > 0 ? `(${unreadCount}) Lizardnet` : 'Lizardnet'

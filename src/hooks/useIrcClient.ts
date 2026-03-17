@@ -438,13 +438,25 @@ export function useIrcClient(settings: Settings) {
   }
 
   return {
-    nick, connected, connStatus, isOper, isIdentified, messages, users, ops, bannedUsers, topic, unreadCount, awayUsers,
-    typingUsers, pmTypingPeers,
-    pmConversations, pmUnread, pmPeerRename,
-    connect, register, disconnect, sendMessage, sendPrivMsg, sendAction, sendOper, sendMediaDelete, sendMsgDelete, sendTyping, sendEdit,
-    whois, kick, ban, unban, op, deop, changeTopic, changeNick, sayNickServ,
-    addMessage, addActive, setAway, setBack, redactMediaUrl,
-    clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer,
-    requestFromBot,
+    connection: {
+      nick, connected, connStatus, isIdentified,
+      connect, register, disconnect,
+      changeNick, sayNickServ, setAway, setBack, sendOper, whois,
+    },
+    channel: {
+      messages, unreadCount, topic, typingUsers,
+      sendMessage, sendAction, sendEdit, addActive, changeTopic, sendTyping,
+    },
+    pm: {
+      pmConversations, pmUnread, pmPeerRename, pmTypingPeers,
+      sendPrivMsg, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer,
+    },
+    users: {
+      users, ops, bannedUsers, awayUsers, isOper,
+      kick, ban, unban, op, deop,
+    },
+    media: {
+      redactMediaUrl, sendMediaDelete, sendMsgDelete, requestFromBot,
+    },
   }
 }
