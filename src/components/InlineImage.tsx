@@ -24,7 +24,7 @@ export function InlineImage({ src, onDelete, onRedact }: { src: string; onDelete
     if (e.key === 'Tab') { e.preventDefault() } // single focusable element — keep focus on close button
   }
 
-  if (error) return <span className="text-muted fst-italic">[media unavailable]</span>
+  if (error) return <span style={{ color: 'var(--c-disabled-fg)', fontStyle: 'italic' }}>[media unavailable]</span>
 
   return (
     <>

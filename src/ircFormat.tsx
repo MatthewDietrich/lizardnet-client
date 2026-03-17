@@ -131,7 +131,7 @@ export function parseIrc(text: string, opts: ParseIrcOptions = {}): ReactNode[] 
             : part.includes('[media deleted]')
               ? <Fragment key={j}>{part.split('[media deleted]').map((seg, i, arr) =>
                   i < arr.length - 1
-                    ? <Fragment key={i}>{seg}<span style={{ color: 'var(--c-secondary)', fontStyle: 'italic' }}>[media deleted]</span></Fragment>
+                    ? <Fragment key={i}>{seg}<span style={{ color: 'var(--c-disabled-fg)', fontStyle: 'italic' }}>[media deleted]</span></Fragment>
                     : seg
                 )}</Fragment>
               : part
