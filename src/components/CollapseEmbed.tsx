@@ -7,13 +7,15 @@ export function CollapseEmbed({ label, children }: { label: string; children: Re
     <div style={{ marginTop: '0.4em' }}>
       <button
         type="button"
+        aria-expanded={open}
+        aria-label={`Toggle ${label} embed`}
         onClick={() => setOpen(v => !v)}
         style={{
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',
           fontSize: 11, color: 'var(--c-tertiary)', display: 'flex', alignItems: 'center', gap: 4,
         }}
       >
-        <span style={{ fontSize: 9 }}>{open ? '▼' : '▶'}</span>
+        <span aria-hidden="true" style={{ fontSize: 9 }}>{open ? '▼' : '▶'}</span>
         {label}
       </button>
       {open && <div style={{ marginTop: '0.3em' }}>{children}</div>}

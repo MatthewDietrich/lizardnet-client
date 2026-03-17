@@ -141,7 +141,7 @@ export function useIrcClient(settings: Settings) {
       }
     }
     setMessages(prev => {
-      const next = [...prev, { from, text, ts: ts ?? new Date(), kind, msgid }]
+      const next = [...prev, { id: crypto.randomUUID(), from, text, ts: ts ?? new Date(), kind, msgid }]
       return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next
     })
   }

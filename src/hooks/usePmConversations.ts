@@ -57,7 +57,7 @@ export function usePmConversations({ focusedRef, settingsRef, onChannelUnread }:
     setPmConversations(prev => {
       const key = resolveKey(prev, peer)
       const next = new Map(prev)
-      next.set(key, [...(next.get(key) ?? []), { from, text, ts: new Date(), kind, msgid }])
+      next.set(key, [...(next.get(key) ?? []), { id: crypto.randomUUID(), from, text, ts: new Date(), kind, msgid }])
       return next
     })
     if (isIncoming && !(focusedRef.current && activePmPeerRef.current?.toLowerCase() === peer.toLowerCase())) {
@@ -82,7 +82,7 @@ export function usePmConversations({ focusedRef, settingsRef, onChannelUnread }:
     setPmConversations(prev => {
       const key = resolveKey(prev, peer)
       const next = new Map(prev)
-      next.set(key, [...(next.get(key) ?? []), { from: '*', text, ts: new Date(), kind: 'event' as const }])
+      next.set(key, [...(next.get(key) ?? []), { id: crypto.randomUUID(), from: '*', text, ts: new Date(), kind: 'event' as const }])
       return next
     })
   }

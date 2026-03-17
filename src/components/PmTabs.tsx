@@ -24,11 +24,12 @@ export default function PmTabs({ activeTab, pmPeers, pmUnread, onSwitch, onClose
             <button
               className={`btn btn-sm ${activeTab === peer ? 'btn-secondary' : 'btn-outline-secondary'}`}
               style={{ fontSize: 12, padding: '2px 10px', borderRadius: '4px 0 0 4px' }}
+              aria-label={`${peer}${unread > 0 ? `, ${unread} unread message${unread > 1 ? 's' : ''}` : ''}`}
               onClick={() => onSwitch(peer)}
             >
               {peer}
               {unread > 0 && (
-                <span className="badge ms-1" style={{ fontSize: 9, background: 'var(--c-tertiary)', color: 'var(--c-surface)'}}>{unread}</span>
+                <span aria-hidden="true" className="badge ms-1" style={{ fontSize: 9, background: 'var(--c-tertiary)', color: 'var(--c-surface)'}}>{unread}</span>
               )}
             </button>
             <button

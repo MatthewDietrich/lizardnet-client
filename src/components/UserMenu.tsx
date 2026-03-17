@@ -20,12 +20,35 @@ export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, o
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handleMouseDown(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose()
     }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') { onClose(); return }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        const items = Array.from(ref.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])
+        if (!items.length) return
+        const idx = items.indexOf(document.activeElement as HTMLElement)
+        const next = e.key === 'ArrowDown'
+          ? items[(idx + 1) % items.length]
+          : items[(idx - 1 + items.length) % items.length]
+        next.focus()
+      }
+    }
+    document.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [onClose])
+
+  // Focus the first menu item when the menu opens
+  useEffect(() => {
+    const first = ref.current?.querySelector<HTMLElement>('[role="menuitem"]')
+    first?.focus()
+  }, [])
 
   function action(fn: () => void) {
     fn()
@@ -35,6 +58,8 @@ export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, o
   return (
     <div
       ref={ref}
+      role="menu"
+      aria-label={nick}
       className="card shadow"
       style={{ position: 'fixed', top: position.y, left: position.x, zIndex: 1050, minWidth: 130 }}
     >
@@ -43,6 +68,7 @@ export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, o
       </div>
       <div className="list-group list-group-flush">
         <button
+          role="menuitem"
           className="list-group-item list-group-item-action py-1 px-2"
           style={{ fontSize: 13 }}
           onClick={() => action(onWhois)}
@@ -51,6 +77,7 @@ export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, o
         </button>
         {!isSelf && (<>
           <button
+            role="menuitem"
             className="list-group-item list-group-item-action py-1 px-2"
             style={{ fontSize: 13 }}
             onClick={() => action(onMention)}
@@ -58,6 +85,7 @@ export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, o
             Mention
           </button>
           <button
+            role="menuitem"
             className="list-group-item list-group-item-action py-1 px-2"
             style={{ fontSize: 13 }}
             onClick={() => action(onWhisper)}
@@ -67,6 +95,7 @@ export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, o
         </>)}
         {isOper && !isSelf && <>
           <button
+            role="menuitem"
             className="list-group-item list-group-item-action py-1 px-2"
             style={{ fontSize: 13, color: '#9A9CBE' }}
             onClick={() => action(isTargetOp ? onDeop : onOp)}
@@ -74,6 +103,7 @@ export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, o
             {isTargetOp ? 'Deop' : 'Op'}
           </button>
           <button
+            role="menuitem"
             className="list-group-item list-group-item-action py-1 px-2"
             style={{ fontSize: 13, color: '#BEBC9A' }}
             onClick={() => action(onKick)}
@@ -81,6 +111,7 @@ export default function UserMenu({ nick, isOper, isSelf, isTargetOp, position, o
             Kick
           </button>
           <button
+            role="menuitem"
             className="list-group-item list-group-item-action py-1 px-2"
             style={{ fontSize: 13, color: '#BE9AAE' }}
             onClick={() => action(onBan)}

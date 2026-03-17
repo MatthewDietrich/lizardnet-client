@@ -260,10 +260,10 @@ export default function MessageList({ messages, nick, onNickClick, canDeleteUrl,
           <span className="text-muted">{searchTerm ? 'No results.' : 'No messages yet.'}</span>
         )}
         <div ref={innerRef}>
-          {filteredMessages.map((m, i) => {
+          {filteredMessages.map((m) => {
             const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
               m.from !== nick && !!mentionRegex?.test(m.text)
-            return <MessageRow key={i} m={m} mentioned={mentioned} searchTerm={searchTerm} nick={nick} onNickClick={onNickClick} onDeleteMedia={onDeleteMedia} canDeleteUrl={canDeleteUrl} onRedactMedia={onRedactMedia} canRedactUrl={canRedactUrl} onEdit={onEdit} />
+            return <MessageRow key={m.id} m={m} mentioned={mentioned} searchTerm={searchTerm} nick={nick} onNickClick={onNickClick} onDeleteMedia={onDeleteMedia} canDeleteUrl={canDeleteUrl} onRedactMedia={onRedactMedia} canRedactUrl={canRedactUrl} onEdit={onEdit} />
           })}
           <div ref={endRef} />
         </div>

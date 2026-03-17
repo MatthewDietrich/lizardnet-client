@@ -218,6 +218,7 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ connec
           ref={inputRef}
           className="form-control"
           placeholder="Type a message..."
+          aria-label="Chat message"
           value={input}
           onChange={e => {
             const val = e.target.value

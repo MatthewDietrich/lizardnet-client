@@ -30,14 +30,16 @@ export default function TopicBar({ topic, isOper, onChangeTopic }: Props) {
           <button type="submit" className="btn btn-sm btn-outline-success">Set</button>
           <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setEditing(false)}>Cancel</button>
         </form>
-      ) : (
-        <span
-          title={isOper ? 'Click to edit topic' : undefined}
-          style={{ cursor: isOper ? 'pointer' : 'default' }}
-          onClick={() => { if (isOper) { setInput(topic); setEditing(true) } }}
+      ) : isOper ? (
+        <button
+          title="Click to edit topic"
+          onClick={() => { setInput(topic); setEditing(true) }}
+          style={{ background: 'none', border: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left' }}
         >
           Topic: {topic || <span className="text-muted">No topic set</span>}
-        </span>
+        </button>
+      ) : (
+        <span>Topic: {topic || <span className="text-muted">No topic set</span>}</span>
       )}
     </div>
   )
