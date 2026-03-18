@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { deleteFromS3, hasUploadedUrl } from './lib/s3Upload'
 import { useIrcClient } from './hooks/useIrcClient'
 import { useSettings } from './hooks/useSettings'
@@ -42,7 +42,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(CHANNEL)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('theme') as 'dark' | 'light') ?? 'dark')
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
   }, [theme])
