@@ -94,14 +94,16 @@ export default function App() {
   return (
     <IrcProvider value={ircContextValue}>
     <div className="d-flex flex-column px-4 py-3" style={{ height: '100dvh' }}>
-      <ChatHeader
-        theme={theme}
-        onShowAdmin={() => setShowAdminConsole(true)}
-        onShowSettings={() => setShowSettingsConsole(true)}
-        onShowNickOrConnect={() => connected ? setShowNickPopup(true) : setShowConnectModal(true)}
-      />
+      <ErrorBoundary>
+        <ChatHeader
+          theme={theme}
+          onShowAdmin={() => setShowAdminConsole(true)}
+          onShowSettings={() => setShowSettingsConsole(true)}
+          onShowNickOrConnect={() => connected ? setShowNickPopup(true) : setShowConnectModal(true)}
+        />
+      </ErrorBoundary>
 
-      {connected && <TopicBar topic={topic} onChangeTopic={changeTopic} />}
+      {connected && <ErrorBoundary fallback={null}><TopicBar topic={topic} onChangeTopic={changeTopic} /></ErrorBoundary>}
 
       <div className="d-flex gap-3 flex-grow-1" style={{ minHeight: 0 }}>
         <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -113,72 +115,88 @@ export default function App() {
             />
           </ErrorBoundary>
         </div>
-        <UserList
-          users={users}
-          awayUsers={awayUsers}
-          onUserClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
-        />
+        <ErrorBoundary>
+          <UserList
+            users={users}
+            awayUsers={awayUsers}
+            onUserClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
+          />
+        </ErrorBoundary>
       </div>
 
-      <PmTabs
-        activeTab={activeTab}
-        pmPeers={pmPeers}
-        pmUnread={pmUnread}
-        onSwitch={switchTab}
-        onClose={closeTab}
-      />
+      <ErrorBoundary fallback={null}>
+        <PmTabs
+          activeTab={activeTab}
+          pmPeers={pmPeers}
+          pmUnread={pmUnread}
+          onSwitch={switchTab}
+          onClose={closeTab}
+        />
+      </ErrorBoundary>
 
       <div className={pmPeers.length > 0 ? 'mt-2' : 'mt-1'}>
         <TypingIndicator users={activeTab === CHANNEL ? typingUsers : pmTypingPeers.has(activeTab) ? [activeTab] : []} />
-        <ChatInput ref={chatInputRef} users={users} commands={HELP_LINES.map(l => l.match(/^(\S+)/)?.[1] ?? '')} onSend={handleSend} botRequest={requestFromBot} onTyping={connected ? state => sendTyping(state, activeTab) : undefined} />
+        <ErrorBoundary>
+          <ChatInput ref={chatInputRef} users={users} commands={HELP_LINES.map(l => l.match(/^(\S+)/)?.[1] ?? '')} onSend={handleSend} botRequest={requestFromBot} onTyping={connected ? state => sendTyping(state, activeTab) : undefined} />
+        </ErrorBoundary>
       </div>
 
       {menuUser && (
-        <UserMenu
-          nick={menuUser}
-          position={menuPos}
-          onWhois={() => whois(menuUser)}
-          onMention={() => chatInputRef.current?.mention(menuUser)}
-          onWhisper={() => chatInputRef.current?.setDraft(`/msg ${menuUser} `)}
-          onOp={() => op(menuUser)}
-          onDeop={() => deop(menuUser)}
-          onKick={() => kick(menuUser)}
-          onBan={() => ban(menuUser)}
-          onClose={() => setMenuUser(null)}
-        />
+        <ErrorBoundary fallback={null}>
+          <UserMenu
+            nick={menuUser}
+            position={menuPos}
+            onWhois={() => whois(menuUser)}
+            onMention={() => chatInputRef.current?.mention(menuUser)}
+            onWhisper={() => chatInputRef.current?.setDraft(`/msg ${menuUser} `)}
+            onOp={() => op(menuUser)}
+            onDeop={() => deop(menuUser)}
+            onKick={() => kick(menuUser)}
+            onBan={() => ban(menuUser)}
+            onClose={() => setMenuUser(null)}
+          />
+        </ErrorBoundary>
       )}
 
       {showAdminConsole && (
-        <AdminConsole
-          onClose={() => setShowAdminConsole(false)}
-          bannedUsers={bannedUsers}
-          onUnban={unban}
-        />
+        <ErrorBoundary fallback={null}>
+          <AdminConsole
+            onClose={() => setShowAdminConsole(false)}
+            bannedUsers={bannedUsers}
+            onUnban={unban}
+          />
+        </ErrorBoundary>
       )}
 
       {showSettingsConsole && (
-        <SettingsConsole
-          onClose={() => setShowSettingsConsole(false)}
-          settings={settings}
-          onChangeSetting={setSetting}
-          theme={theme}
-          onChangeTheme={setTheme}
-        />
+        <ErrorBoundary fallback={null}>
+          <SettingsConsole
+            onClose={() => setShowSettingsConsole(false)}
+            settings={settings}
+            onChangeSetting={setSetting}
+            theme={theme}
+            onChangeTheme={setTheme}
+          />
+        </ErrorBoundary>
       )}
 
       {showConnectModal && (
-        <ConnectModal
-          onConnect={(n, p) => { connect(n, p); setShowConnectModal(false) }}
-          onRegister={(n, p, e) => { register(n, p, e); setShowConnectModal(false) }}
-        />
+        <ErrorBoundary fallback={null}>
+          <ConnectModal
+            onConnect={(n, p) => { connect(n, p); setShowConnectModal(false) }}
+            onRegister={(n, p, e) => { register(n, p, e); setShowConnectModal(false) }}
+          />
+        </ErrorBoundary>
       )}
 
       {showNickPopup && (
-        <ChangeNickPopup
-          currentNick={nick}
-          onConfirm={changeNick}
-          onClose={() => setShowNickPopup(false)}
-        />
+        <ErrorBoundary fallback={null}>
+          <ChangeNickPopup
+            currentNick={nick}
+            onConfirm={changeNick}
+            onClose={() => setShowNickPopup(false)}
+          />
+        </ErrorBoundary>
       )}
     </div>
     </IrcProvider>
