@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 export function useIrcUsers() {
   const [users, setUsers] = useState<string[]>([])
@@ -50,6 +50,8 @@ export function useIrcUsers() {
     pmTypingTimersRef.current.clear()
     setPmTypingPeers(new Set())
   }
+
+  useEffect(() => () => clearAllTyping(), [])
 
   function resetUsers() {
     setUsers([])
