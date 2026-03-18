@@ -34,6 +34,7 @@ export function useIrcClient(settings: Settings) {
   const [isIdentified, setIsIdentified] = useState(false)
   const focusedRef = useRef(document.hasFocus())
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
+  const connectCoreRef = useRef<(chosenNick: string, password: string, isReconnect: boolean, nickServCommand?: string) => void>(null!)
   const credentialsRef = useRef<Awaited<ReturnType<typeof encryptCreds>> | null>(null)
   const sendTimestampsRef = useRef<number[]>([])
 
@@ -84,7 +85,7 @@ export function useIrcClient(settings: Settings) {
     window.addEventListener('focus', onFocus)
     window.addEventListener('blur', onBlur)
     return () => { window.removeEventListener('focus', onFocus); window.removeEventListener('blur', onBlur) }
-  }, [])
+  }, [clearActivePeerUnread])
 
   useEffect(() => {
     function onVisibilityChange() {
@@ -93,11 +94,11 @@ export function useIrcClient(settings: Settings) {
       if (!creds || connStatusRef.current !== 'reconnecting') return
       cancelReconnect()
       resetDelay()
-      decryptCreds(creds).then(pw => connectCore(creds.nick, pw, true))
+      decryptCreds(creds).then(pw => connectCoreRef.current(creds.nick, pw, true))
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
-  }, [])
+  }, []) // cancelReconnect/resetDelay only close over refs; connectCore accessed via connectCoreRef
 
   function addActive(text: string) {
     addActiveEvent(text, () => addMessage('*', text, 'event'))
@@ -309,7 +310,7 @@ export function useIrcClient(settings: Settings) {
       }
       const delay = schedule(() => {
         const enc = credentialsRef.current
-        if (enc) decryptCreds(enc).then(pw => connectCore(enc.nick, pw, true))
+        if (enc) decryptCreds(enc).then(pw => connectCoreRef.current(enc.nick, pw, true))
       })
       setConnStatus('reconnecting')
       addMessage('*', `Disconnected. Reconnecting in ${delay / 1000}s…`, 'event')
@@ -349,6 +350,8 @@ export function useIrcClient(settings: Settings) {
     attachListeners(client)
     clientRef.current = client
   }
+  // Keep ref in sync so the visibility effect and close handler always call the current version.
+  connectCoreRef.current = connectCore
 
   async function connect(chosenNick: string, password: string) {
     clientRef.current?.quit('Reconnecting')

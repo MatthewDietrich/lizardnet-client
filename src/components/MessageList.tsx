@@ -208,6 +208,13 @@ export default function MessageList({ messages, onNickClick, actions }: Props) {
     }
   }, [messages, searchOpen])
 
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false)
+    setSearchTerm('')
+    atBottomRef.current = true
+    setTimeout(() => endRef.current?.scrollIntoView(), 0)
+  }, [])
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
@@ -221,14 +228,7 @@ export default function MessageList({ messages, onNickClick, actions }: Props) {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
-
-  const closeSearch = useCallback(() => {
-    setSearchOpen(false)
-    setSearchTerm('')
-    atBottomRef.current = true
-    setTimeout(() => endRef.current?.scrollIntoView(), 0)
-  }, [])
+  }, [closeSearch])
 
   function scrollToBottom() {
     atBottomRef.current = true
