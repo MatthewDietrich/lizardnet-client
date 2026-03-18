@@ -1,4 +1,5 @@
 import { Fragment, type CSSProperties, type ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import { get as getEmoji } from 'node-emoji'
 import { TwitterEmbed, getTwitterInfo } from './components/TwitterEmbed'
 import { BlueskyEmbed, getBlueskyUrl } from './components/BlueskyEmbed'
@@ -256,5 +257,5 @@ function mediaWrap(key: number, children: ReactNode) {
 }
 
 export function isMediaNode(node: ReactNode): boolean {
-  return !!(node && typeof node === 'object' && 'type' in (node as object) && (node as React.ReactElement).type === MediaWrapper)
+  return !!(node && typeof node === 'object' && 'type' in (node as object) && (node as ReactElement).type === MediaWrapper)
 }

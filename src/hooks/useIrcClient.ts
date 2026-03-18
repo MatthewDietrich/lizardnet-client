@@ -32,7 +32,7 @@ export function useIrcClient(settings: Settings) {
   const nickRef = useRef('')
   const [connected, setConnected] = useState(false)
   const [isIdentified, setIsIdentified] = useState(false)
-  const focusedRef = useRef(document.hasFocus())
+  const focusedRef = useRef(true) // corrected by the focus/blur effect on mount
   const clientRef = useRef<InstanceType<typeof IRC.Client> | null>(null)
   const connectCoreRef = useRef<(chosenNick: string, password: string, isReconnect: boolean, nickServCommand?: string) => void>(null!)
   const credentialsRef = useRef<Awaited<ReturnType<typeof encryptCreds>> | null>(null)

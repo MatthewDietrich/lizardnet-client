@@ -31,7 +31,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
   const registerNickError = nickError(regNick.trim())
   const emailError = regEmail.trim() && !EMAIL_RE.test(regEmail.trim()) ? 'Invalid email address' : null
 
-  function handleConnect(e: { preventDefault(): void }) {
+  function handleConnect(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const nick = nickInput.trim()
     if (!nick || connectNickError) return
@@ -39,7 +39,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
     onConnect(nick, passwordInput)
   }
 
-  function handleRegister(e: { preventDefault(): void }) {
+  function handleRegister(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const nick = regNick.trim()
     const password = regPassword.trim()
@@ -61,7 +61,7 @@ export default function ConnectModal({ onConnect, onRegister }: Props) {
             <div className="modal-body">
               <h4>RULES</h4>
               <ol className="mb-4">
-                {RULES.map((r, i) => <li key={i}>{r}</li>)}
+                {RULES.map((r) => <li key={r}>{r}</li>)}
               </ol>
 
               <ul className="nav nav-tabs mb-3">

@@ -11,7 +11,7 @@ export default function TopicBar({ topic, onChangeTopic }: Props) {
   const [editing, setEditing] = useState(false)
   const [input, setInput] = useState('')
 
-  function handleSubmit(e: { preventDefault(): void }) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     onChangeTopic(input)
     setEditing(false)

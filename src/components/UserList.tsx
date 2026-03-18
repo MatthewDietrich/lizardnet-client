@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useIrcContext } from '../contexts/IrcContext'
 
 interface Props {
@@ -13,6 +13,7 @@ function isSmallViewport() {
 
 export default function UserList({ users, awayUsers, onUserClick }: Props) {
   const { nick, ops } = useIrcContext()
+  const opsSet = useMemo(() => new Set(ops), [ops])
   const [collapsed, setCollapsed] = useState(isSmallViewport)
 
   useEffect(() => {
@@ -80,13 +81,13 @@ export default function UserList({ users, awayUsers, onUserClick }: Props) {
               fontStyle: isAway ? 'italic' : 'normal',
             }}
             title={isAway ? `${u} is away` : undefined}
-            aria-label={`${u}${ops.includes(u) ? ', moderator' : ''}${isAway ? ', away' : ''}`}
+            aria-label={`${u}${opsSet.has(u) ? ', moderator' : ''}${isAway ? ', away' : ''}`}
             onClick={e => {
               const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
               onUserClick(u, { x: e.clientX || rect.right, y: e.clientY || rect.top })
             }}
           >
-            {u}{ops.includes(u) && <span style={{ color: 'var(--c-quaternary)', fontSize: 10 }}> (Mod)</span>}
+            {u}{opsSet.has(u) && <span style={{ color: 'var(--c-quaternary)', fontSize: 10 }}> (Mod)</span>}
           </button>
         )
       })}

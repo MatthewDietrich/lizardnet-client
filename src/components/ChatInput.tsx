@@ -30,6 +30,10 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ users,
   connectedRef.current = connected
   const uploadProgressRef = useRef(uploadProgress)
   uploadProgressRef.current = uploadProgress
+  const onSendRef = useRef(onSend)
+  onSendRef.current = onSend
+  const botRequestRef = useRef(botRequest)
+  botRequestRef.current = botRequest
   const [isDragging, setIsDragging] = useState(false)
   const dragCounterRef = useRef(0)
   const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -88,25 +92,32 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ users,
     return () => { document.removeEventListener('mousedown', onMouseDown); document.removeEventListener('keydown', onKeyDown) }
   }, [showPicker])
 
+  const uploadErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   async function handleFile(file: File) {
     const type = file.type || ''
     if (type && !type.startsWith('image/') && !type.startsWith('video/') && !type.startsWith('audio/')) {
+      if (uploadErrorTimerRef.current) clearTimeout(uploadErrorTimerRef.current)
       setUploadError(`Unsupported file type: ${type}`)
-      setTimeout(() => setUploadError(null), 4000)
+      uploadErrorTimerRef.current = setTimeout(() => setUploadError(null), 4000)
       return
     }
     setUploadError(null)
     setUploadProgress(0)
     try {
-      const url = await uploadToS3(file, botRequest, setUploadProgress)
+      const url = await uploadToS3(file, botRequestRef.current, setUploadProgress)
       setUploadProgress(null)
-      onSend(url)
+      onSendRef.current(url)
     } catch (e) {
       setUploadProgress(null)
+      if (uploadErrorTimerRef.current) clearTimeout(uploadErrorTimerRef.current)
       setUploadError(e instanceof Error ? e.message : 'Upload failed')
-      setTimeout(() => setUploadError(null), 4000)
+      uploadErrorTimerRef.current = setTimeout(() => setUploadError(null), 4000)
     }
   }
+
+  const handleFileRef = useRef(handleFile)
+  handleFileRef.current = handleFile
 
   function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
     const file = e.clipboardData.files[0]
@@ -131,7 +142,7 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ users,
       setIsDragging(false)
       if (!connectedRef.current || uploadProgressRef.current !== null) return
       const file = e.dataTransfer?.files[0]
-      if (file) handleFile(file)
+      if (file) handleFileRef.current(file)
     }
     document.addEventListener('dragenter', onDragEnter)
     document.addEventListener('dragleave', onDragLeave)
@@ -145,7 +156,7 @@ const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({ users,
     }
   }, [])
 
-  function handleSubmit(e: { preventDefault(): void }) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!input.trim()) return
     if (typingTimerRef.current) { clearTimeout(typingTimerRef.current); typingTimerRef.current = null }

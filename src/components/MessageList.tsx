@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom'
 import { parseIrc, isMediaNode } from '../ircFormat'
 import type { Message } from '../types'
 import { useIrcContext } from '../contexts/IrcContext'
+import ErrorBoundary from './ErrorBoundary'
 
 export interface MessageActions {
   canDeleteUrl?: (url: string) => boolean
@@ -213,6 +214,7 @@ export default function MessageList({ messages, onNickClick, actions }: Props) {
     setSearchOpen(false)
     setSearchTerm('')
     atBottomRef.current = true
+    // endRef.current?.scrollIntoView() is a no-op on a detached element, so no cleanup is needed
     setTimeout(() => endRef.current?.scrollIntoView(), 0)
   }, [])
 
@@ -283,7 +285,7 @@ export default function MessageList({ messages, onNickClick, actions }: Props) {
           {filteredMessages.map((m) => {
             const mentioned = (!m.kind || m.kind === 'chat' || m.kind === 'action') &&
               m.from !== nick && !!mentionRegex?.test(m.text)
-            return <MessageRow key={m.id} m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} actions={actions} />
+            return <ErrorBoundary key={m.id} fallback={null}><MessageRow m={m} mentioned={mentioned} searchTerm={searchTerm} onNickClick={onNickClick} actions={actions} /></ErrorBoundary>
           })}
           <div ref={endRef} />
         </div>

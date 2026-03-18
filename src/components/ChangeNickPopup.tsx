@@ -11,7 +11,7 @@ export default function ChangeNickPopup({ currentNick, onConfirm, onClose }: Pro
   const trapRef = useFocusTrap<HTMLDivElement>(onClose)
   const [value, setValue] = useState(currentNick)
 
-  function handleSubmit(e: { preventDefault(): void }) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const trimmed = value.trim()
     if (!trimmed) return

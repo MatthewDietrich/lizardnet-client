@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react'
 import { deleteFromS3, hasUploadedUrl } from './lib/s3Upload'
 import { useIrcClient } from './hooks/useIrcClient'
 import { useSettings } from './hooks/useSettings'
@@ -73,8 +73,10 @@ export default function App() {
   const handleSend = useMemo(() => createCommandHandler({
     activeTab, sendMessage, sendPrivMsg, sendAction, changeNick,
     openPmConversation, switchTab, sayNickServ, sendOper, setAway, setBack, addActive,
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [activeTab, sendMessage, sendPrivMsg, sendAction, changeNick, openPmConversation, sayNickServ, sendOper, setAway, setBack, addActive])
+
+  const onNickClick = useCallback((u: string, pos: { x: number; y: number }) => { setMenuUser(u); setMenuPos(pos) }, [])
+  const onUserClick = useCallback((u: string, pos: { x: number; y: number }) => { setMenuUser(u); setMenuPos(pos) }, [])
 
   const activeMessages = activeTab === CHANNEL ? messages : (pmConversations.get(activeTab) ?? [])
   const pmPeers = useMemo(() => [...pmConversations.keys()], [pmConversations])
@@ -116,7 +118,7 @@ export default function App() {
           <ErrorBoundary>
             <MessageList
               messages={activeMessages}
-              onNickClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
+              onNickClick={onNickClick}
               actions={messageActions}
             />
           </ErrorBoundary>
@@ -125,7 +127,7 @@ export default function App() {
           <UserList
             users={users}
             awayUsers={awayUsers}
-            onUserClick={(u, pos) => { setMenuUser(u); setMenuPos(pos) }}
+            onUserClick={onUserClick}
           />
         </ErrorBoundary>
       </div>
