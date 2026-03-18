@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import { MediaOverlayActions } from './MediaOverlayActions'
 
 export function InlineImage({ src, onDelete, onRedact }: { src: string; onDelete?: (url: string) => void; onRedact?: (url: string) => void }) {
@@ -9,6 +10,7 @@ export function InlineImage({ src, onDelete, onRedact }: { src: string; onDelete
   const closeBtnRef = useRef<HTMLButtonElement>(null)
   const thumbnailBtnRef = useRef<HTMLButtonElement>(null)
   const wasExpandedRef = useRef(false)
+  const dialogRef = useFocusTrap<HTMLDivElement>(() => setExpanded(false))
 
   useEffect(() => {
     if (expanded) {
@@ -18,11 +20,6 @@ export function InlineImage({ src, onDelete, onRedact }: { src: string; onDelete
       thumbnailBtnRef.current?.focus()
     }
   }, [expanded])
-
-  function handleOverlayKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Escape') { setExpanded(false); return }
-    if (e.key === 'Tab') { e.preventDefault() } // single focusable element — keep focus on close button
-  }
 
   if (error) return <span style={{ color: 'var(--c-disabled-fg)', fontStyle: 'italic' }}>[media unavailable]</span>
 
@@ -47,11 +44,11 @@ export function InlineImage({ src, onDelete, onRedact }: { src: string; onDelete
 
       {expanded && (
         <div
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-label="Image preview"
           onClick={() => setExpanded(false)}
-          onKeyDown={handleOverlayKeyDown}
           onTouchStart={e => { touchStartY.current = e.touches[0].clientY }}
           onTouchEnd={e => { if (e.changedTouches[0].clientY - touchStartY.current > 60) setExpanded(false) }}
           style={{

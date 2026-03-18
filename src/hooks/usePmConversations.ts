@@ -175,7 +175,7 @@ export function usePmConversations({ focusedRef, settingsRef, onChannelUnread }:
   }
 
   return {
-    pmConversations, pmUnread, pmPeerRename,
+    pmConversations, pmUnread, pmPeerRename, clearPmPeerRename: () => setPmPeerRename(null),
     activePmPeerRef,
     setActivePmPeer, addPmMessage, addEventToPm, addActiveEvent,
     openPmConversation, closePmConversation, clearPmUnread, clearActivePeerUnread,

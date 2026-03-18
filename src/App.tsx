@@ -25,7 +25,7 @@ export default function App() {
   const irc = useIrcClient(settings)
   const { nick, connected, connStatus, isIdentified, connect, register, changeNick, sayNickServ, setAway, setBack, sendOper, whois } = irc.connection
   const { messages, unreadCount, topic, typingUsers, sendMessage, sendAction, sendEdit, addActive, changeTopic, sendTyping } = irc.channel
-  const { pmConversations, pmUnread, pmPeerRename, pmTypingPeers, sendPrivMsg, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer } = irc.pm
+  const { pmConversations, pmUnread, pmPeerRename, clearPmPeerRename, pmTypingPeers, sendPrivMsg, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer } = irc.pm
   const { users, ops, bannedUsers, awayUsers, isOper, kick, ban, unban, op, deop } = irc.users
   const { redactMediaUrl, sendMediaDelete, sendMsgDelete, requestFromBot } = irc.media
 
@@ -55,7 +55,8 @@ export default function App() {
       setActivePmPeer(pmPeerRename.to)
       return pmPeerRename.to
     })
-  }, [pmPeerRename, setActivePmPeer])
+    clearPmPeerRename()
+  }, [pmPeerRename, setActivePmPeer, clearPmPeerRename])
 
   function switchTab(tab: string) {
     setActiveTab(tab)
@@ -85,6 +86,11 @@ export default function App() {
     onEdit: isIdentified ? (msgid, newText) => sendEdit(msgid, newText, activeTab === CHANNEL ? CHANNEL : activeTab) : undefined,
     onDeleteMsg: activeTab === CHANNEL && (isOper || ops.includes(nick)) ? msgid => sendMsgDelete(msgid) : undefined,
   }), [isIdentified, isOper, ops, nick, requestFromBot, redactMediaUrl, addActive, sendMediaDelete, sendEdit, sendMsgDelete, activeTab])
+
+  const activeTypingUsers = useMemo(
+    () => activeTab === CHANNEL ? typingUsers : pmTypingPeers.has(activeTab) ? [activeTab] : [],
+    [activeTab, typingUsers, pmTypingPeers]
+  )
 
   const ircContextValue = useMemo(
     () => ({ nick, connected, connStatus, isOper, isIdentified, ops }),
@@ -135,7 +141,7 @@ export default function App() {
       </ErrorBoundary>
 
       <div className={pmPeers.length > 0 ? 'mt-2' : 'mt-1'}>
-        <TypingIndicator users={activeTab === CHANNEL ? typingUsers : pmTypingPeers.has(activeTab) ? [activeTab] : []} />
+        <TypingIndicator users={activeTypingUsers} />
         <ErrorBoundary>
           <ChatInput ref={chatInputRef} users={users} commands={HELP_LINES.map(l => l.match(/^(\S+)/)?.[1] ?? '')} onSend={handleSend} botRequest={requestFromBot} onTyping={connected ? state => sendTyping(state, activeTab) : undefined} />
         </ErrorBoundary>

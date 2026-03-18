@@ -37,6 +37,7 @@ declare module 'irc-framework' {
     say(target: string, message: string): void
     quit(message?: string): void
     raw(command: string): void
+    requestCap(cap: string): void
     on(event: 'raw', listener: (event: { command: string; params: string[] }) => void): this
     on(event: 'registered', listener: () => void): this
     on(event: 'message', listener: (event: MessageEvent) => void): this

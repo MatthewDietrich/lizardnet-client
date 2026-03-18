@@ -1,4 +1,5 @@
 import { useRef, useMemo, memo, useLayoutEffect, useState, useEffect, useCallback } from 'react'
+import { flushSync } from 'react-dom'
 import { parseIrc, isMediaNode } from '../ircFormat'
 import type { Message } from '../types'
 import { useIrcContext } from '../contexts/IrcContext'
@@ -219,8 +220,8 @@ export default function MessageList({ messages, onNickClick, actions }: Props) {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'f' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault()
-        setSearchOpen(true)
-        setTimeout(() => searchInputRef.current?.focus(), 0)
+        flushSync(() => setSearchOpen(true))
+        searchInputRef.current?.focus()
       }
       if (e.key === 'Escape') {
         closeSearch()

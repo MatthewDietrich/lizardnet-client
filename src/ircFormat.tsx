@@ -247,12 +247,14 @@ export function parseIrc(text: string, opts: ParseIrcOptions = {}): ReactNode[] 
   return nodes
 }
 
-const MEDIA_MARKER = 'data-media'
+function MediaWrapper({ children }: { children: ReactNode }) {
+  return <span style={{ display: 'contents' }}>{children}</span>
+}
 
 function mediaWrap(key: number, children: ReactNode) {
-  return <span key={key} {...{ [MEDIA_MARKER]: true }} style={{ display: 'contents' }}>{children}</span>
+  return <MediaWrapper key={key}>{children}</MediaWrapper>
 }
 
 export function isMediaNode(node: ReactNode): boolean {
-  return !!(node && typeof node === 'object' && 'props' in (node as object) && (node as { props: Record<string, unknown> }).props[MEDIA_MARKER])
+  return !!(node && typeof node === 'object' && 'type' in (node as object) && (node as React.ReactElement).type === MediaWrapper)
 }

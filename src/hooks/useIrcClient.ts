@@ -49,7 +49,7 @@ export function useIrcClient(settings: Settings) {
   } = useIrcMessages({ nickRef, focusedRef, settingsRef })
 
   const {
-    pmConversations, pmUnread, pmPeerRename,
+    pmConversations, pmUnread, pmPeerRename, clearPmPeerRename,
     setActivePmPeer, addPmMessage, addActiveEvent,
     openPmConversation, closePmConversation, clearPmUnread, clearActivePeerUnread,
     handlePeerRename, redactInPmConversations, editPmMessage, injectPmMsgid,
@@ -112,7 +112,7 @@ export function useIrcClient(settings: Settings) {
 
   function attachListeners(client: InstanceType<typeof IRC.Client>) {
     client.on('message', (event: unknown) => {
-      const { nick: who, target, message, type, tags } = event as IrcMessageEvent
+      const { nick: who, target, message, type, tags, batch } = event as IrcMessageEvent
       if (!who || who === '*' || who.includes('.') || who.toLowerCase() === 'nickserv') return
       if (who.toLowerCase() === BOT_NICK.toLowerCase()) {
         if (target?.toLowerCase() === CHANNEL) {
@@ -130,7 +130,7 @@ export function useIrcClient(settings: Settings) {
       }
       const isAction = type === 'action'
       const serverTime = tags?.['server-time'] ? new Date(tags['server-time']) : undefined
-      const isHistory = (event as any).batch?.type === 'chathistory'
+      const isHistory = batch?.type === 'chathistory'
       const isEcho = 'inspircd.org/echo' in (tags ?? {})
       const msgid = tags?.['msgid']
       const editOf = tags?.['+draft/edit']
@@ -330,8 +330,8 @@ export function useIrcClient(settings: Settings) {
   function connectCore(chosenNick: string, password: string, isReconnect: boolean, nickServCommand?: string) {
     cancelReconnect()
     const client = new IRC.Client()
-    ;(client as any).requestCap('message-ids')
-    ;(client as any).requestCap('echo-message')
+    client.requestCap('message-ids')
+    client.requestCap('echo-message')
     client.connect({ host: HOST, port: PORT, nick: chosenNick, tls: true })
     client.on('registered', () => {
       setConnected(true)
@@ -451,7 +451,7 @@ export function useIrcClient(settings: Settings) {
       sendMessage, sendAction, sendEdit, addActive, changeTopic, sendTyping,
     },
     pm: {
-      pmConversations, pmUnread, pmPeerRename, pmTypingPeers,
+      pmConversations, pmUnread, pmPeerRename, clearPmPeerRename, pmTypingPeers,
       sendPrivMsg, clearPmUnread, openPmConversation, closePmConversation, setActivePmPeer,
     },
     users: {
