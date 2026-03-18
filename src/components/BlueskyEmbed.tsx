@@ -23,12 +23,14 @@ export function BlueskyEmbed({ url }: { url: string }) {
       return
     }
 
-    fetch(`https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=${encodeURIComponent(handle)}`)
+    const controller = new AbortController()
+    fetch(`https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle=${encodeURIComponent(handle)}`, { signal: controller.signal })
       .then(r => r.json())
       .then(data => {
         if (data.did) setIframeSrc(`https://embed.bsky.app/embed/${data.did}/app.bsky.feed.post/${rkey}`)
       })
       .catch(() => {})
+    return () => controller.abort()
   }, [url])
 
   useEffect(() => {
