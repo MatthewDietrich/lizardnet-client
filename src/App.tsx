@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { deleteFromS3, hasUploadedUrl } from './lib/s3Upload'
 import { useIrcClient } from './hooks/useIrcClient'
 import { useSettings } from './hooks/useSettings'
@@ -68,24 +68,30 @@ export default function App() {
     if (activeTab === peer) setActiveTab(CHANNEL)
   }
 
-  const handleSend = createCommandHandler({
+  const handleSend = useMemo(() => createCommandHandler({
     activeTab, sendMessage, sendPrivMsg, sendAction, changeNick,
     openPmConversation, switchTab, sayNickServ, sendOper, setAway, setBack, addActive,
-  })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [activeTab, sendMessage, sendPrivMsg, sendAction, changeNick, openPmConversation, sayNickServ, sendOper, setAway, setBack, addActive])
 
   const activeMessages = activeTab === CHANNEL ? messages : (pmConversations.get(activeTab) ?? [])
-  const pmPeers = [...pmConversations.keys()]
-  const messageActions: MessageActions = {
+  const pmPeers = useMemo(() => [...pmConversations.keys()], [pmConversations])
+  const messageActions: MessageActions = useMemo(() => ({
     canDeleteUrl: url => isIdentified && (hasUploadedUrl(url) || isOper || ops.includes(nick)),
     onDeleteMedia: url => deleteFromS3(url, requestFromBot).then(() => { redactMediaUrl(url) }).catch(err => addActive(`Failed to delete: ${err.message.includes('identified') ? 'Logged in as guest. Please /register or /identify. Type /help for help' : err.message}`)),
     canRedactUrl: () => isOper || ops.includes(nick),
     onRedactMedia: url => { redactMediaUrl(url); sendMediaDelete(url) },
     onEdit: isIdentified ? (msgid, newText) => sendEdit(msgid, newText, activeTab === CHANNEL ? CHANNEL : activeTab) : undefined,
     onDeleteMsg: activeTab === CHANNEL && (isOper || ops.includes(nick)) ? msgid => sendMsgDelete(msgid) : undefined,
-  }
+  }), [isIdentified, isOper, ops, nick, requestFromBot, redactMediaUrl, addActive, sendMediaDelete, sendEdit, sendMsgDelete, activeTab])
+
+  const ircContextValue = useMemo(
+    () => ({ nick, connected, connStatus, isOper, isIdentified, ops }),
+    [nick, connected, connStatus, isOper, isIdentified, ops]
+  )
 
   return (
-    <IrcProvider value={{ nick, connected, connStatus, isOper, isIdentified, ops }}>
+    <IrcProvider value={ircContextValue}>
     <div className="d-flex flex-column px-4 py-3" style={{ height: '100dvh' }}>
       <ChatHeader
         theme={theme}
