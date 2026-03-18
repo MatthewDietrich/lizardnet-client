@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 // ── Simulated environment mirroring useIrcModeration internals ────────────────
 // The hook has no React state — every function closes over refs and calls
