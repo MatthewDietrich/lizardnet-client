@@ -26,25 +26,36 @@ export function TwitterEmbed({ statusId }: { statusId: string }) {
     // Skip if we already embedded this tweet — guards against StrictMode double-invoke
     if (embeddedIdRef.current === statusId) return
     embeddedIdRef.current = statusId
+    let mounted = true
 
     function embed() {
-      if (!containerRef.current || !window.twttr) return
+      if (!mounted || !containerRef.current || !window.twttr) return
       containerRef.current.replaceChildren()
       window.twttr.widgets.createTweet(statusId, containerRef.current, { theme: 'dark', dnt: true })
     }
 
     if (window.twttr) {
       embed()
-    } else if (!document.getElementById('twitter-widgets-js')) {
+      return () => { mounted = false }
+    }
+
+    let scriptEl: HTMLElement
+    if (!document.getElementById('twitter-widgets-js')) {
       const script = document.createElement('script')
       script.id = 'twitter-widgets-js'
       script.src = 'https://platform.twitter.com/widgets.js'
       script.async = true
-      script.addEventListener('load', embed)
       document.head.appendChild(script)
+      scriptEl = script
     } else {
       // Script tag exists but not loaded yet — wait for it
-      document.getElementById('twitter-widgets-js')!.addEventListener('load', embed)
+      scriptEl = document.getElementById('twitter-widgets-js')!
+    }
+
+    scriptEl.addEventListener('load', embed)
+    return () => {
+      mounted = false
+      scriptEl.removeEventListener('load', embed)
     }
   }, [statusId])
 
