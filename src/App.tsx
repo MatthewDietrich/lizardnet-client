@@ -49,16 +49,17 @@ export default function App() {
   const chatInputRef = useRef<ChatInputHandle>(null)
 
   useEffect(() => {
-    setActivePmPeer(activeTab !== CHANNEL ? activeTab : null)
-  }, [activeTab, setActivePmPeer])
-
-  useEffect(() => {
     if (!pmPeerRename) return
-    setActiveTab(prev => prev === pmPeerRename.from ? pmPeerRename.to : prev)
-  }, [pmPeerRename])
+    setActiveTab(prev => {
+      if (prev !== pmPeerRename.from) return prev
+      setActivePmPeer(pmPeerRename.to)
+      return pmPeerRename.to
+    })
+  }, [pmPeerRename, setActivePmPeer])
 
   function switchTab(tab: string) {
     setActiveTab(tab)
+    setActivePmPeer(tab !== CHANNEL ? tab : null)
     if (tab !== CHANNEL) clearPmUnread(tab)
     requestAnimationFrame(() => chatInputRef.current?.focus())
   }
